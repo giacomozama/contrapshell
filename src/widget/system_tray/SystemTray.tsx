@@ -46,7 +46,7 @@ function ButtonTrayItem({ item }: { item: AstalTray.TrayItem }) {
 
 export default function SystemTray() {
     return (
-        <box>
+        <box class="bar-group" overflow={Gtk.Overflow.HIDDEN}>
             <box
                 orientation={Gtk.Orientation.HORIZONTAL}
                 cssClasses={["bar-chip", "system-tray"]}

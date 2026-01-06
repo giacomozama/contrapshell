@@ -60,13 +60,18 @@ export function rgbaWithAlpha({ red, green, blue }: Gdk.RGBA, alpha: number) {
     return new Gdk.RGBA({ red, green, blue, alpha });
 }
 
-export async function generatePalette(imagePath: string, colors: number, theme?: string) {
+export async function generatePalette(imagePath: string, colors: number, theme: string | undefined, algorithm: string) {
+    // return autoPaletteState().generatePalette(imagePath, colors, theme, algorithm);
+
     const themeArg = theme ? `-t ${theme} ` : "";
-    return execAsync(`${config.path.autoPaletteCli} ${themeArg} -n ${colors} -o json ${imagePath}`)
+    const escapedPath = imagePath.replace("'", `"'"`);
+    return execAsync(
+        `${config.path.autoPaletteCli} ${themeArg} -n ${colors} -o json '${escapedPath}' -a ${algorithm}`
+    )
         .then((cmdOutput) => {
             const cleanCmdOutput = cmdOutput.slice(0, cmdOutput.lastIndexOf("\n"));
             const { swatches } = JSON.parse(cleanCmdOutput) as { swatches: { color: string }[] };
             return swatches.map((s) => parseRGBA(`${s.color}FF`));
         })
-        .catch(() => [...Array(colors)].map(() => null));
+        .catch(() => null);
 }

@@ -4,6 +4,10 @@ $accent-1-rgb: #{"var(--shell-accent-1-rgb)"};
 $accent-2-rgb: #{"var(--shell-accent-2-rgb)"};
 $accent-1: #{"rgb(var(--shell-accent-1-rgb))"};
 $accent-2: #{"rgb(var(--shell-accent-2-rgb))"};
+$panel-border-radius: #{var(--panel-border-radius)};
+$background-panel-border-radius: #{var(--background-panel-border-radius)};
+$panel-padding: #{var(--panel-padding)};
+$panel-margin: #{var(--panel-margin)};
 $font: Adwaita Sans;
 
 @mixin cross-helper {
@@ -24,12 +28,12 @@ $font: Adwaita Sans;
 }
 
 @mixin glassy-background {
-    background: rgba(255, 255, 255, 0.05);
-    box-shadow: inset 0 0 1px 3px rgba(255, 255, 255, 0.04), inset 0 0 0 1px rgba(255, 255, 255, 0.11);
+    background: var(--glassy-bg-color);
+    box-shadow: var(--glassy-box-shadow);
 }
 
 @mixin glassy-background-dark {
-    background: rgba(20, 20, 20, 0.8);
+    background: rgba(20, 20, 20, 0.9);
     box-shadow: none;
 }
 

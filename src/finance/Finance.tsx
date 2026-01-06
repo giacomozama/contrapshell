@@ -1,17 +1,6 @@
 import { Gtk } from "ags/gtk4";
-import { Accessor, createState, For } from "gnim";
-import {
-    selectPeriod,
-    selectedPeriod,
-    selectedTicker,
-    selectTicker,
-    stockHistory,
-    StockHistoryPeriod,
-    StockMovement,
-    TopStockMovements,
-    topStockMovements,
-    refreshStocks,
-} from "./finance_state";
+import { Accessor, createEffect, createState, For, onCleanup } from "gnim";
+import { StockHistoryPeriod, StockMovement, TopStockMovements, financeState } from "./finance_state";
 import { CURSOR_POINTER } from "../utils/gtk";
 import Adw from "gi://Adw?version=1";
 import config from "../config";
@@ -92,9 +81,10 @@ function drawGraphLine(
     cr.lineTo(-4, height + 4);
     cr.closePath();
 
-    cr.setSourceRGBA(1, 1, 1, 0.4);
+    const { red, green, blue } = config.colors.accent2;
+    cr.setSourceRGBA(red, green, blue, 1);
     cr.strokePreserve();
-    cr.setSourceRGBA(1, 1, 1, 0.2);
+    cr.setSourceRGBA(red, green, blue, 0.2);
     cr.fill();
 }
 
@@ -119,7 +109,7 @@ function drawAxisLabels(
         cr.showText(`$${price.toFixed(2)}`);
     }
 
-    const period = selectedPeriod.get();
+    const period = financeState().selectedPeriod.peek();
     const durationMs = getPeriodDurationMs(period);
     const numDateLabels = 4;
     const now = Date.now();
@@ -194,7 +184,7 @@ function drawHoverPopup(
 
             const sign = x > width / 2 ? -1 : 1;
 
-            const period = selectedPeriod.get();
+            const period = financeState().selectedPeriod.peek();
             const durationMs = getPeriodDurationMs(period);
             let date: Date;
             if (period === StockHistoryPeriod.PeriodMax) {
@@ -329,7 +319,7 @@ function StockGraphDrawingArea() {
             overflow={Gtk.Overflow.HIDDEN}
             $={(self) => {
                 self.set_draw_func((_, cr, width, height) => {
-                    const history = stockHistory.get();
+                    const history = financeState().stockHistory();
                     if (!history || !history.length) return;
 
                     const min = Math.min(...history);
@@ -363,61 +353,73 @@ function StockGraphDrawingArea() {
 }
 
 function StockGraphPeriodSelector() {
+    const groupButton = (
+        <togglebutton
+            label={"1D"}
+            hexpand={true}
+            active={financeState().selectedPeriod.as((p) => p === StockHistoryPeriod.Period1D)}
+            onClicked={() => financeState().selectPeriod(StockHistoryPeriod.Period1D)}
+        />
+    ) as Gtk.ToggleButton;
+
     return (
         <box class="page-selector">
-            <togglebutton
-                label={"1D"}
-                hexpand={true}
-                active={selectedPeriod.as((p) => p === StockHistoryPeriod.Period1D)}
-                onClicked={() => selectPeriod(StockHistoryPeriod.Period1D)}
-            />
+            {groupButton}
             <togglebutton
                 label={"5D"}
                 hexpand={true}
-                active={selectedPeriod.as((p) => p === StockHistoryPeriod.Period5D)}
-                onClicked={() => selectPeriod(StockHistoryPeriod.Period5D)}
+                active={financeState().selectedPeriod.as((p) => p === StockHistoryPeriod.Period5D)}
+                onClicked={() => financeState().selectPeriod(StockHistoryPeriod.Period5D)}
+                group={groupButton}
             />
             <togglebutton
                 label={"1M"}
                 hexpand={true}
-                active={selectedPeriod.as((p) => p === StockHistoryPeriod.Period1M)}
-                onClicked={() => selectPeriod(StockHistoryPeriod.Period1M)}
+                active={financeState().selectedPeriod.as((p) => p === StockHistoryPeriod.Period1M)}
+                onClicked={() => financeState().selectPeriod(StockHistoryPeriod.Period1M)}
+                group={groupButton}
             />
             <togglebutton
                 label={"3M"}
                 hexpand={true}
-                active={selectedPeriod.as((p) => p === StockHistoryPeriod.Period3M)}
-                onClicked={() => selectPeriod(StockHistoryPeriod.Period3M)}
+                active={financeState().selectedPeriod.as((p) => p === StockHistoryPeriod.Period3M)}
+                onClicked={() => financeState().selectPeriod(StockHistoryPeriod.Period3M)}
+                group={groupButton}
             />
             <togglebutton
                 label={"6M"}
                 hexpand={true}
-                active={selectedPeriod.as((p) => p === StockHistoryPeriod.Period6M)}
-                onClicked={() => selectPeriod(StockHistoryPeriod.Period6M)}
+                active={financeState().selectedPeriod.as((p) => p === StockHistoryPeriod.Period6M)}
+                onClicked={() => financeState().selectPeriod(StockHistoryPeriod.Period6M)}
+                group={groupButton}
             />
             <togglebutton
                 label={"1Y"}
                 hexpand={true}
-                active={selectedPeriod.as((p) => p === StockHistoryPeriod.Period1Y)}
-                onClicked={() => selectPeriod(StockHistoryPeriod.Period1Y)}
+                active={financeState().selectedPeriod.as((p) => p === StockHistoryPeriod.Period1Y)}
+                onClicked={() => financeState().selectPeriod(StockHistoryPeriod.Period1Y)}
+                group={groupButton}
             />
             <togglebutton
                 label={"5Y"}
                 hexpand={true}
-                active={selectedPeriod.as((p) => p === StockHistoryPeriod.Period5Y)}
-                onClicked={() => selectPeriod(StockHistoryPeriod.Period5Y)}
+                active={financeState().selectedPeriod.as((p) => p === StockHistoryPeriod.Period5Y)}
+                onClicked={() => financeState().selectPeriod(StockHistoryPeriod.Period5Y)}
+                group={groupButton}
             />
             <togglebutton
                 label={"YTD"}
                 hexpand={true}
-                active={selectedPeriod.as((p) => p === StockHistoryPeriod.PeriodYTD)}
-                onClicked={() => selectPeriod(StockHistoryPeriod.PeriodYTD)}
+                active={financeState().selectedPeriod.as((p) => p === StockHistoryPeriod.PeriodYTD)}
+                onClicked={() => financeState().selectPeriod(StockHistoryPeriod.PeriodYTD)}
+                group={groupButton}
             />
             <togglebutton
                 label={"Max"}
                 hexpand={true}
-                active={selectedPeriod.as((p) => p === StockHistoryPeriod.PeriodMax)}
-                onClicked={() => selectPeriod(StockHistoryPeriod.PeriodMax)}
+                active={financeState().selectedPeriod.as((p) => p === StockHistoryPeriod.PeriodMax)}
+                onClicked={() => financeState().selectPeriod(StockHistoryPeriod.PeriodMax)}
+                group={groupButton}
             />
         </box>
     );
@@ -426,11 +428,14 @@ function StockGraphPeriodSelector() {
 function StockGraph() {
     return (
         <box orientation={Gtk.Orientation.VERTICAL} class="graph-container">
-            <StockGraphPeriodSelector />
             <stack
                 heightRequest={340}
                 hexpand={true}
-                visibleChildName={stockHistory.as((h) => (h ? "graph" : "loading"))}
+                $={(self) => {
+                    createEffect(() =>
+                        self.set_visible_child_name(financeState().stockHistory() ? "graph" : "loading")
+                    );
+                }}
             >
                 <box $type="named" name="loading" hexpand={true} halign={Gtk.Align.CENTER}>
                     <Adw.Spinner widthRequest={64} heightRequest={64} />
@@ -452,12 +457,18 @@ function StockList({ name, selector }: { name: string; selector: (item: TopStock
             child={
                 (
                     <box orientation={Gtk.Orientation.VERTICAL} hexpand={true}>
-                        <For each={topStockMovements.as(selector)}>
+                        <For each={financeState().topStockMovements.as(selector)}>
                             {(item: StockMovement) => (
                                 <togglebutton
                                     class="stock-item"
-                                    active={selectedTicker.as((t) => t === item.ticker)}
-                                    onClicked={() => selectTicker(item.ticker)}
+                                    active={financeState().selectedTicker.as((t) => t === item.ticker)}
+                                    onClicked={() => financeState().selectTicker(item.ticker)}
+                                    onNotifyParent={(self) => {
+                                        const group = self.parent?.get_first_child();
+                                        if (group instanceof Gtk.ToggleButton && group !== self) {
+                                            self.set_group(group);
+                                        }
+                                    }}
                                 >
                                     <box hexpand={true} valign={Gtk.Align.START}>
                                         <box orientation={Gtk.Orientation.VERTICAL}>
@@ -502,7 +513,12 @@ export function Finance() {
     const [visiblePage, setVisiblePage] = createState("most_active");
 
     return (
-        <box cssClasses={["finance"]} layoutManager={new Gtk.BinLayout()} hexpand={true} hexpandSet={true}>
+        <box
+            cssClasses={["finance"]}
+            layoutManager={new Gtk.BinLayout()}
+            hexpandSet={true}
+            overflow={Gtk.Overflow.HIDDEN}
+        >
             <box orientation={Gtk.Orientation.VERTICAL}>
                 <box orientation={Gtk.Orientation.HORIZONTAL} cssClasses={["popover-title"]} valign={Gtk.Align.START}>
                     <image iconName={"profit-symbolic"} halign={Gtk.Align.START} pixelSize={16} />
@@ -511,7 +527,7 @@ export function Finance() {
                         cursor={CURSOR_POINTER}
                         valign={Gtk.Align.CENTER}
                         onClicked={() => {
-                            refreshStocks();
+                            financeState().refreshStocks();
                         }}
                     >
                         <box spacing={12}>
@@ -520,8 +536,15 @@ export function Finance() {
                         </box>
                     </button>
                 </box>
+                <StockGraphPeriodSelector />
                 <StockGraph />
                 <box class="page-selector">
+                    <togglebutton
+                        label={"Favorites"}
+                        active={visiblePage.as((p) => p === "favorites")}
+                        onClicked={() => setVisiblePage("favorites")}
+                        hexpand={true}
+                    />
                     <togglebutton
                         label={"Most active"}
                         active={visiblePage.as((p) => p === "most_active")}
@@ -541,7 +564,13 @@ export function Finance() {
                         hexpand={true}
                     />
                 </box>
-                <stack visibleChildName={visiblePage} transitionType={Gtk.StackTransitionType.CROSSFADE}>
+                <stack
+                    transitionType={Gtk.StackTransitionType.CROSSFADE}
+                    $={(self) => {
+                        createEffect(() => self.set_visible_child_name(visiblePage()));
+                    }}
+                >
+                    <StockList name="favorites" selector={(item) => item.favorites} />
                     <StockList name="gainers" selector={(item) => item.topGainers} />
                     <StockList name="losers" selector={(item) => item.topLosers} />
                     <StockList name="most_active" selector={(item) => item.mostActive} />

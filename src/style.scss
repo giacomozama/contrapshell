@@ -2,7 +2,7 @@
 @use "base";
 @use "appearance_settings/appearance_settings_style";
 @use "audio/audio_style";
-@use "background_visualizer/background_visualizer_style";
+@use "background_panel/background_panel_style";
 @use "bar/bar_style";
 @use "calendar/calendar_style";
 @use "display_clock/display_clock_style";
@@ -12,7 +12,6 @@
 @use "media/media_style";
 @use "mpd/mpd_style";
 @use "news/news_style";
-@use "notes/notes_style";
 @use "notifications/notifications_style";
 @use "shutdown/shutdown_style";
 @use "trash/trash_style";

@@ -1,11 +1,35 @@
-import { With } from "gnim";
-import { nmAppletItem } from "../system_tray/system_tray_state";
-import { MenuTrayItem } from "../system_tray/SystemTray";
+import { Gtk } from "ags/gtk4";
+import { CURSOR_POINTER } from "../utils/gtk";
+import app from "ags/gtk4/app";
+import { networkState } from "./network_state";
 
 export default function NetworkBarButton() {
     return (
-        <box cssClasses={["bar-chip", "system-tray"]}>
-            <With value={nmAppletItem}>{(nmItem) => nmItem && <MenuTrayItem item={nmItem} />}</With>
-        </box>
+        <button
+            $type="start"
+            cssClasses={["bar-button"]}
+            cursor={CURSOR_POINTER}
+            vexpand={false}
+            halign={Gtk.Align.START}
+            onClicked={(self) => {
+                self.add_css_class("active");
+                const window = app.get_window("network") as GlassyWidgets.ContrapshellPopoverWindow;
+                const connId = window.connect("hide", () => {
+                    self.remove_css_class("active");
+                    window.disconnect(connId);
+                });
+                window.show_from(self);
+            }}
+        >
+            <image iconName={networkState().iconName} halign={Gtk.Align.CENTER} />
+        </button>
     );
 }
+
+// export default function NetworkBarButton() {
+//     return (
+//         <box cssClasses={["bar-button"]}>
+//             <With value={nmAppletItem}>{(nmItem) => nmItem && <MenuTrayItem item={nmItem} />}</With>
+//         </box>
+//     );
+// }

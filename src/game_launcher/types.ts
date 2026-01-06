@@ -1,6 +1,8 @@
+import GioUnix from "gi://GioUnix?version=2.0";
+
 export type GameLauncherEntry = {
     title: string;
-    command: string;
+    command: () => void;
     image: string;
 };
 
@@ -14,3 +16,10 @@ export type BottlesLibrary = {
         thumbnail: string;
     };
 };
+
+export interface GameLauncherListEntry {
+    id: string;
+    iconName: string;
+    app: GioUnix.DesktopAppInfo;
+    entries: GameLauncherEntry[];
+}

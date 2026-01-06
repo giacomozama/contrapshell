@@ -1,121 +1,56 @@
 @use "../common";
 
-@keyframes bar-fade-in {
-    0% {
-        opacity: 0.0000001;
-    }
-
-    66% {
-        opacity: 0.0000001;
-    }
-
-    100% {
-        opacity: 1;
-    }
+window.BarScrim {
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), transparent);
 }
 
 window.BarBackground {
+    @include common.glassy-background;
     color: common.$fg-color;
     font-family: common.$font;
-    // animation: bar-fade-in 1.5s linear;
+    box-shadow: none;
+    border-radius: common.$panel-border-radius;
+}
 
-    > main {
-        padding: 8px 8px 0 8px;
-
-        main-inner {
-            @include common.glassy-background;
-            box-shadow: none;
-            border-radius: 12px;
-            // padding: 6px;
-        }
-    }
+window.BarShadow {
+    box-shadow: 0 0 6px 0px rgba(0, 0, 0, 0.3);
+    border-radius: common.$panel-border-radius;
+    margin: common.$panel-margin;
+    margin-bottom: 0;
 }
 
 window.BarForeground {
-    // animation: bar-fade-in 1.5s linear;
+    main {
+        box-shadow: none;
+        border-radius: common.$panel-border-radius;
 
-    > main {
-        padding: 8px 8px 0 8px;
+        .bar-button > button,
+        .bar-chip > button,
+        .bar-button > menubutton > button,
+        button.bar-button {
+            -gtk-icon-size: 16px;
+            border-radius: 0;
+            border: none;
+            padding: 0 12px;
+            min-width: 16px;
+            min-height: 32px;
+            background: none;
+            font-size: 16px;
+            font-weight: 400;
+            transition: all 0.2s ease;
 
-        main-inner {
-            box-shadow: none;
-            border-radius: 12px;
-            // padding: 6px;
-
-            .bar-gloss {
-                @include common.glassy-background;
-                background-color: transparent;
-                border-radius: 12px;
-            }
-
-            .bar-button,
-            .bar-chip {
-                -gtk-icon-size: 16px;
-                // border-radius: 8px;
-                border-radius: 0;
-                border: none;
-                min-height: 32px;
-
-                &button,
-                > button,
-                > menubutton > button,
-                &.system-tray > .tray-icon > menubutton > button {
-                    -gtk-icon-size: 16px;
-                    background: none;
-                    min-width: 20px;
-                    padding: 6px 12px;
-                    font-size: 16px;
-                    font-weight: 400;
-                    border-radius: 0;
-
-                    &:hover,
-                    &:active {
-                        background: rgba(255, 255, 255, 0.2);
-                    }
-                }
-            }
-
-            .bar-chip {
-                // @include glassy-chip;
-            }
-
-            .bar-button {
-                // @include glassy-chip-button;
-                border-radius: 0;
-            }
-
-            menubutton.bar-button {
-                padding: 0;
-
-                > button {
-                    border: none;
-                    box-shadow: none;
-                    background: none;
-                    font-size: 16px;
-                    font-weight: 400;
-                }
-            }
-
-            .bar-group {
-                // @include glassy-chip;
-                background: transparent;
-                border-radius: 0;
-
-                .bar-button,
-                .bar-chip {
-                    border: none;
-                    box-shadow: none;
-                    border-radius: 0;
-                    min-width: 32px;
-
-                    &button,
-                    > button,
-                    > menubutton > button,
-                    &.system-tray > .tray-icon > menubutton > button {
-                        border-radius: 0;
-                    }
-                }
+            &:hover,
+            &:active,
+            &:checked,
+            &.active {
+                background: rgba(255, 255, 255, 0.2);
             }
         }
+    }
+
+    .bar-gloss {
+        @include common.glassy-background;
+        background-color: transparent;
+        border-radius: common.$panel-border-radius;
     }
 }

@@ -1,13 +1,9 @@
 @use "../common.scss";
 
-media-controls {
+window.media-controls {
     .instance {
         padding-left: 12px;
         opacity: 0.7;
-    }
-
-    .bars {
-        // border-radius: 8px;
     }
 
     .cover-art-background {
@@ -26,7 +22,7 @@ media-controls {
         }
     }
 
-    .popover-standard-dark {
+    .popover-standard {
         box-shadow: none;
     }
 

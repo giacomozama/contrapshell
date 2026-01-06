@@ -1,6 +1,7 @@
 {
     "dependencies": {
-        "ags": "*",
-        "gnim": "*"
+        "ags": "~/.config/ags/node_modules/ags",
+        "gnim": "~/.config/ags/node_modules/gnim",
+        "yaml": "^2.8.1"
     }
 }

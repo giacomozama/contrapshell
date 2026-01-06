@@ -3,9 +3,8 @@ import config from "../config";
 import { MediaStatus, MusicVisualierMode } from "./types";
 import { mediaState } from "./media_state";
 import { Gtk } from "ags/gtk4";
-import { onCleanup } from "gnim";
+import { Accessor, createEffect, onCleanup } from "gnim";
 import { add_throttled_tick_callback } from "../utils/gtk";
-import { eyeCandyConfig } from "../eye_candy/eye_candy_state";
 import { cava } from "../cava/cava_state";
 
 function drawMusicVisualizer(cr: giCairo.Context, width: number, height: number) {
@@ -84,12 +83,11 @@ function drawMusicVisualizerPills(cr: giCairo.Context, width: number, height: nu
 export function MusicVisualizer() {
     return (
         <drawingarea
-            cssClasses={mediaState.status.as((s) => (s === MediaStatus.Playing ? ["bars"] : ["bars", "fading"]))}
+            cssClasses={mediaState().playerState.status.as((s) => (s === MediaStatus.Playing ? ["bars"] : ["bars", "fading"]))}
             overflow={Gtk.Overflow.HIDDEN}
             halign={Gtk.Align.FILL}
             vexpand={true}
             hexpand={true}
-            visible={eyeCandyConfig.as((c) => c.musicVisualizerEnabled)}
             $={(self) => {
                 self.set_draw_func((_, cr, width, height) => {
                     drawMusicVisualizer(cr, width, height);
@@ -98,29 +96,29 @@ export function MusicVisualizer() {
 
                 let tickCallbackId: number | null = null;
 
-                function updateTickCallback() {
-                    const status = mediaState.status.get();
-                    const ecConfig = eyeCandyConfig.get();
+                if (mediaState().playerState.status.peek() !== MediaStatus.Playing) {
+                    self.hide();
+                }
 
-                    if (ecConfig.musicVisualizerEnabled && status === MediaStatus.Playing) {
+                createEffect(() => {
+                    if (mediaState().playerState.status() === MediaStatus.Playing) {
+                        self.show();
                         tickCallbackId && self.remove_tick_callback(tickCallbackId);
-                        tickCallbackId = add_throttled_tick_callback(self, ecConfig.musicVisualizerMinInterval, (w) => {
+                        tickCallbackId = add_throttled_tick_callback(self, 15_000, (w) => {
                             w.queue_draw();
                             return true;
                         });
                         return;
                     }
 
-                    if (tickCallbackId) {
-                        self.remove_tick_callback(tickCallbackId);
-                        tickCallbackId = null;
-                    }
-                }
+                    if (!tickCallbackId) return;
+
+                    self.hide();
+                    self.remove_tick_callback(tickCallbackId);
+                    tickCallbackId = null;
+                });
 
                 onCleanup(() => tickCallbackId && self.remove_tick_callback(tickCallbackId));
-                onCleanup(mediaState.status.subscribe(updateTickCallback));
-                onCleanup(eyeCandyConfig.subscribe(updateTickCallback));
-                updateTickCallback();
             }}
         />
     );

@@ -1,5 +1,5 @@
-import { EyeCandyMode } from "../eye_candy/types";
 
 export interface Storage {
-    eyeCandyMode: EyeCandyMode;
+    useScrim: boolean;
+    useDarkPanels: boolean;
 }

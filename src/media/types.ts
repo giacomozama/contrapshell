@@ -23,7 +23,7 @@ export type MediaState = {
     position: Accessor<number>;
     duration: Accessor<number>;
     artPath: Accessor<string>;
-    palette: Accessor<Gdk.RGBA[] | null[]>;
+    palette: Accessor<Gdk.RGBA[] | null>;
     canPlayPause: Accessor<boolean>;
     playPause(): void;
     canPrevious: Accessor<boolean>;

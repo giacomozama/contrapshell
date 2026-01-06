@@ -1,18 +1,17 @@
 import { Gtk } from "ags/gtk4";
-import { Accessor, createComputed, onCleanup, With } from "gnim";
+import { Accessor, createComputed, For, With } from "gnim";
 import Pango from "gi://Pango?version=1.0";
 import { CURSOR_POINTER } from "../utils/gtk";
-import { formatSecondsToMMSS } from "../utils/time";
 import { MediaStatus } from "./types";
-import { activeMediaPlayer, availableMediaPlayers, mediaState, watchActivePlayer } from "./media_state";
-import { popdownParentMenuButton } from "../utils/gtk";
+import { mediaState } from "./media_state";
+import { popdownParentWindow } from "../utils/gtk";
 import AstalMpris from "gi://AstalMpris?version=0.1";
 import config from "../config";
 import { rgbToHex } from "../utils/colors";
 import { MusicVisualizer } from "./MusicVisualizer";
+import app from "ags/gtk4/app";
 
 interface PlayerListEntry {
-    busName: string;
     name: string;
     instance: string | undefined;
 }
@@ -22,47 +21,20 @@ const BUS_NAME_REGEX = /org\.mpris\.MediaPlayer2\.(\w+)(?:\.instance_)?(\w+)?/;
 function parsePlayerListEntry(busName: string): PlayerListEntry {
     const res = BUS_NAME_REGEX.exec(busName);
     return {
-        busName,
         name: res?.[1] || busName,
         instance: res?.[2],
     };
 }
 
-const playerDropdownItems = availableMediaPlayers.as(
-    (mp) => new Gtk.StringList({ strings: mp.map((p) => JSON.stringify(parsePlayerListEntry(p.busName))) })
-);
-
-const listItemFactory = new Gtk.SignalListItemFactory();
-
-listItemFactory.connect("setup", (_, item: Gtk.ListItem) => {
-    item.set_child(
-        (
-            <box widthRequest={100} cursor={CURSOR_POINTER} vexpand={true}>
-                <label class="name" hexpand={true} xalign={0} />
-                <label class="instance" xalign={1} />
-            </box>
-        ) as Gtk.Widget
-    );
-});
-
-function bindListItem(item: Gtk.ListItem) {
-    const entry = JSON.parse((item.item as Gtk.StringObject).string) as PlayerListEntry;
-
-    const box = item.get_child() as Gtk.Box;
-
-    const nameLabel = box.get_first_child() as Gtk.Label;
-    nameLabel.set_label(entry.name);
-
-    const instanceLabel = nameLabel.get_next_sibling() as Gtk.Label;
-    instanceLabel.set_label(entry.instance ?? "");
+function formatSecondsToMMSS(seconds: number) {
+    if (seconds > 100_000_000_000) return "∞";
+    const h = seconds / 3600;
+    seconds %= 3600;
+    const hStr = h >= 1 ? `${h.toFixed(0)}:` : "";
+    let mStr = (seconds / 60).toFixed(0);
+    if (h >= 1) mStr = mStr.padStart(2, "0");
+    return `${hStr}${mStr}:${(seconds % 60).toFixed(0).padStart(2, "0")}`;
 }
-
-listItemFactory.connect("bind", (_, item: Gtk.ListItem) => {
-    bindListItem(item);
-});
-
-const accentColor1 = mediaState.palette.as((p) => p?.[0] ?? config.colors.accent1);
-const accentColor2 = mediaState.palette.as((p) => p?.[1] ?? config.colors.accent2);
 
 function MediaControlsButtons() {
     return (
@@ -74,7 +46,7 @@ function MediaControlsButtons() {
             cssClasses={["buttons-box"]}
         >
             <button
-                iconName={mediaState.shuffleStatus.as((s) =>
+                iconName={mediaState().playerState.shuffleStatus.as((s) =>
                     (() => {
                         switch (s) {
                             case AstalMpris.Shuffle.OFF:
@@ -91,8 +63,8 @@ function MediaControlsButtons() {
                 vexpand={false}
                 valign={Gtk.Align.CENTER}
                 cursor={CURSOR_POINTER}
-                sensitive={mediaState.shuffleStatus.as((s) => s !== AstalMpris.Shuffle.UNSUPPORTED)}
-                onClicked={mediaState.cycleShuffle}
+                sensitive={mediaState().playerState.shuffleStatus.as((s) => s !== AstalMpris.Shuffle.UNSUPPORTED)}
+                onClicked={mediaState().playerState.cycleShuffle}
             />
             <button
                 iconName="media-skip-backward-symbolic"
@@ -102,19 +74,21 @@ function MediaControlsButtons() {
                 vexpand={false}
                 valign={Gtk.Align.CENTER}
                 cursor={CURSOR_POINTER}
-                sensitive={createComputed([mediaState.position, mediaState.canPrevious], (pos, cp) =>
-                    pos > 2 ? !!activeMediaPlayer?.get()?.canControl : cp
-                )}
+                sensitive={createComputed(() => {
+                    const pos = mediaState().playerState.position();
+                    const cp = mediaState().playerState.canPrevious();
+                    return pos > 2 ? !!mediaState().activeMediaPlayer?.peek()?.canControl : cp;
+                })}
                 onClicked={() => {
-                    if (mediaState.position.get() > 2) {
-                        mediaState.seek(0);
+                    if (mediaState().playerState.position.peek() > 2) {
+                        mediaState().playerState.seek(0);
                     } else {
-                        mediaState.skipPrevious();
+                        mediaState().playerState.skipPrevious();
                     }
                 }}
             />
             <button
-                iconName={mediaState.status.as((s) =>
+                iconName={mediaState().playerState.status.as((s) =>
                     s === MediaStatus.Playing ? "media-playback-pause-symbolic" : "media-playback-start-symbolic"
                 )}
                 cssClasses={["play-pause", "circular"]}
@@ -123,8 +97,8 @@ function MediaControlsButtons() {
                 vexpand={false}
                 valign={Gtk.Align.CENTER}
                 cursor={CURSOR_POINTER}
-                sensitive={mediaState.canPlayPause}
-                onClicked={mediaState.playPause}
+                sensitive={mediaState().playerState.canPlayPause}
+                onClicked={mediaState().playerState.playPause}
             />
             <button
                 iconName="media-skip-forward-symbolic"
@@ -133,11 +107,11 @@ function MediaControlsButtons() {
                 heightRequest={48}
                 valign={Gtk.Align.CENTER}
                 cursor={CURSOR_POINTER}
-                sensitive={mediaState.canNext}
-                onClicked={mediaState.skipNext}
+                sensitive={mediaState().playerState.canNext}
+                onClicked={mediaState().playerState.skipNext}
             />
             <button
-                iconName={mediaState.loopStatus.as((s) =>
+                iconName={mediaState().playerState.loopStatus.as((s) =>
                     (() => {
                         switch (s) {
                             case AstalMpris.Loop.NONE:
@@ -156,72 +130,42 @@ function MediaControlsButtons() {
                 vexpand={false}
                 valign={Gtk.Align.CENTER}
                 cursor={CURSOR_POINTER}
-                sensitive={mediaState.loopStatus.as((s) => s !== AstalMpris.Loop.UNSUPPORTED)}
-                onClicked={mediaState.cycleLoop}
+                sensitive={mediaState().playerState.loopStatus.as((s) => s !== AstalMpris.Loop.UNSUPPORTED)}
+                onClicked={mediaState().playerState.cycleLoop}
             />
         </box>
     );
 }
 
-function MediaControlsPlayerDropDown() {
+function MediaControlsPlayerSelector() {
     return (
-        <Gtk.DropDown
-            cursor={CURSOR_POINTER}
-            marginEnd={8}
-            halign={Gtk.Align.CENTER}
-            overflow={Gtk.Overflow.HIDDEN}
-            factory={listItemFactory}
-            valign={Gtk.Align.CENTER}
-            selected={createComputed([availableMediaPlayers, activeMediaPlayer], (available, active) => {
-                for (let i = 0; i < available.length; i++) {
-                    if (available[i].busName === active?.busName) return i;
-                }
-                return 0;
-            })}
-            $={(self) => {
-                const model = playerDropdownItems.get();
-
-                self.set_model(model);
-
-                const activePlayerBusName = activeMediaPlayer.get()?.busName;
-                if (activePlayerBusName) {
-                    const playerCount = model.get_n_items();
-                    for (let i = 0; i < playerCount; i++) {
-                        const item = model.get_item(i) as Gtk.StringObject;
-                        const entry = JSON.parse(item.string) as PlayerListEntry;
-                        if (entry.busName === activePlayerBusName) {
-                            self.set_selected(i);
-                            break;
-                        }
-                    }
-                }
-
-                onCleanup(
-                    playerDropdownItems.subscribe(() => {
-                        const selectedItem = self.get_selected_item<Gtk.StringObject>();
-                        const model = playerDropdownItems.get();
-                        const index = selectedItem ? model.find(selectedItem.string) : Infinity;
-                        self.set_model(model);
-                        if (index < model.get_n_items()) {
-                            self.set_selected(index);
-                        }
-                    })
-                );
-
-                const notifySelectedItemConnId = self.connect("notify::selected-item", (self) => {
-                    const selectedItem = self.get_selected_item<Gtk.StringObject>();
-                    if (!selectedItem) return;
-
-                    const entry = JSON.parse(selectedItem.string) as PlayerListEntry;
-                    const player = availableMediaPlayers.get().find((p) => p.busName === entry.busName);
-                    if (!player) return;
-
-                    watchActivePlayer(player);
-                });
-
-                onCleanup(() => self.disconnect(notifySelectedItemConnId));
-            }}
-        />
+        <box class="button-group" valign={Gtk.Align.CENTER} overflow={Gtk.Overflow.HIDDEN}>
+            <For each={mediaState().availableMediaPlayers}>
+                {(player) => {
+                    const { name, instance } = parsePlayerListEntry(player.busName);
+                    return (
+                        <togglebutton
+                            class="glassy-chip-button"
+                            onClicked={(self) => {
+                                if (mediaState().activeMediaPlayer.peek()?.busName === player.busName) {
+                                    self.set_active(true);
+                                    return;
+                                }
+                                mediaState().watchActivePlayer(player);
+                            }}
+                            valign={Gtk.Align.CENTER}
+                            cursor={CURSOR_POINTER}
+                            active={mediaState().activeMediaPlayer.as((p) => p?.busName === player.busName)}
+                        >
+                            <box spacing={8}>
+                                <label label={name} />
+                                {instance && <label label={instance} class="subtext" />}
+                            </box>
+                        </togglebutton>
+                    );
+                }}
+            </For>
+        </box>
     );
 }
 
@@ -230,17 +174,17 @@ function MediaControlsSongInfoBox() {
         <box cssClasses={["song-info-box"]} valign={Gtk.Align.CENTER} hexpand={true}>
             <box orientation={Gtk.Orientation.VERTICAL} valign={Gtk.Align.CENTER} hexpand={true} spacing={4}>
                 <label
-                    label={mediaState.artist}
+                    label={mediaState().playerState.artist}
                     cssClasses={["artist-label"]}
                     halign={Gtk.Align.START}
                     maxWidthChars={0}
                     wrap={true}
                     lines={1}
-                    visible={mediaState.artist.as((a) => a !== "")}
+                    visible={mediaState().playerState.artist.as((a) => a !== "")}
                     ellipsize={Pango.EllipsizeMode.END}
                 />
                 <label
-                    label={mediaState.title}
+                    label={mediaState().playerState.title}
                     cssClasses={["title-label"]}
                     maxWidthChars={0}
                     wrap={true}
@@ -250,13 +194,13 @@ function MediaControlsSongInfoBox() {
                     ellipsize={Pango.EllipsizeMode.END}
                 />
                 <label
-                    label={mediaState.album}
+                    label={mediaState().playerState.album}
                     cssClasses={["album-label"]}
                     maxWidthChars={0}
                     wrap={true}
                     halign={Gtk.Align.START}
                     lines={1}
-                    visible={mediaState.album.as((a) => a !== "")}
+                    visible={mediaState().playerState.album.as((a) => a !== "")}
                     ellipsize={Pango.EllipsizeMode.END}
                 />
             </box>
@@ -270,27 +214,27 @@ function MediaControlsSongInfoBox() {
                 valign={Gtk.Align.CENTER}
                 halign={Gtk.Align.END}
                 cursor={CURSOR_POINTER}
-                visible={activeMediaPlayer.as((p) => !!p?.canControl)}
-                onClicked={() => activeMediaPlayer.get()?.stop()}
+                visible={mediaState().activeMediaPlayer.as((p) => !!p?.canControl)}
+                onClicked={() => mediaState().activeMediaPlayer.peek()?.stop()}
             />
         </box>
     );
 }
 
-function MediaControlsPopover() {
+export function MediaControlsPopoverWindow() {
     return (
-        <glassypopover widthRequest={600} color1={accentColor1} color2={accentColor2}>
+        <contrapshellpopoverwindow name="media-controls" cssClasses={["media-controls"]} widthRequest={600}>
             <box
                 layoutManager={new Gtk.BinLayout()}
                 hexpand={true}
                 vexpand={true}
-                class="media-controls-popover-content"
+                cssClasses={["media-controls-popover-content"]}
             >
                 <box cssClasses={["cover-art-background"]} overflow={Gtk.Overflow.HIDDEN}>
                     <box
                         hexpand={true}
                         vexpand={true}
-                        css={mediaState.artPath.as((p) => `background-image: url("${p}");`)}
+                        css={mediaState().playerState.artPath.as((p) => `background-image: url("${p}");`)}
                     />
                 </box>
                 <box
@@ -306,30 +250,32 @@ function MediaControlsPopover() {
                     >
                         <image iconName="emblem-music-symbolic" halign={Gtk.Align.START} />
                         <label label="Media" xalign={0} hexpand={true} />
-                        <MediaControlsPlayerDropDown />
+                        <MediaControlsPlayerSelector />
                         <button
                             iconName="external-link-symbolic"
                             cssClasses={["glassy-chip-button", "corner"]}
                             cursor={CURSOR_POINTER}
                             valign={Gtk.Align.CENTER}
-                            sensitive={activeMediaPlayer.as((p) => p?.canRaise === true)}
+                            sensitive={mediaState().activeMediaPlayer.as((p) => p?.canRaise === true)}
                             onClicked={(self) => {
-                                activeMediaPlayer.get()?.raise();
-                                popdownParentMenuButton(self);
+                                mediaState().activeMediaPlayer.peek()?.raise();
+                                popdownParentWindow(self);
                             }}
                         />
                     </box>
                     <box orientation={Gtk.Orientation.VERTICAL} class="media-controls-inner">
                         <box orientation={Gtk.Orientation.HORIZONTAL}>
                             <box halign={Gtk.Align.START}>
-                                <With value={mediaState.artPath}>
+                                <With value={mediaState().playerState.artPath}>
                                     {(path) =>
                                         path ? (
                                             <box layoutManager={new Gtk.BinLayout()}>
                                                 <box
                                                     cssClasses={["cover-art"]}
                                                     halign={Gtk.Align.START}
-                                                    css={mediaState.artPath.as((p) => `background-image: url("${p}");`)}
+                                                    css={mediaState().playerState.artPath.as(
+                                                        (p) => `background-image: url("${p}");`
+                                                    )}
                                                 />
                                                 <box cssClasses={["gloss"]} />
                                             </box>
@@ -352,27 +298,32 @@ function MediaControlsPopover() {
                         </box>
                         <slider
                             cssClasses={["slider"]}
-                            max={mediaState.duration}
+                            max={mediaState().playerState.duration}
                             min={0}
-                            value={mediaState.position}
-                            css={accentColor1.as((c) => `--slider-color: ${rgbToHex(c)};`)}
-                            sensitive={activeMediaPlayer.as((p) => !!p?.canControl)}
-                            onChangeValue={(self) => mediaState.seek(self.value)}
+                            value={mediaState().playerState.position}
+                            css={mediaState().playerState.palette.as(
+                                (c) => `--slider-color: ${rgbToHex(c?.[0] ?? config.colors.accent1)};`
+                            )}
+                            sensitive={mediaState().activeMediaPlayer.as((p) => !!p?.canControl)}
+                            onChangeValue={(self) => mediaState().playerState.seek(self.value)}
                         />
                         <box class="slider-labels" hexpand={true}>
                             <label
-                                label={mediaState.position.as((p) => formatSecondsToMMSS(p ?? 0))}
+                                label={mediaState().playerState.position.as((p) => formatSecondsToMMSS(p ?? 0))}
                                 halign={Gtk.Align.START}
                                 hexpand={true}
                                 xalign={0}
                             />
-                            <label label={mediaState.duration.as((d) => formatSecondsToMMSS(d ?? 0))} xalign={1} />
+                            <label
+                                label={mediaState().playerState.duration.as((d) => formatSecondsToMMSS(d ?? 0))}
+                                xalign={1}
+                            />
                         </box>
                         <MediaControlsButtons />
                     </box>
                 </box>
             </box>
-        </glassypopover>
+        </contrapshellpopoverwindow>
     );
 }
 
@@ -380,11 +331,20 @@ export default function MediaControls() {
     return (
         <box layoutManager={new Gtk.BinLayout()} cssName="media-controls" hexpand={true}>
             <MusicVisualizer />
-            <menubutton
+            <button
                 cursor={CURSOR_POINTER}
-                sensitive={activeMediaPlayer.as((s) => !!s)}
+                sensitive={mediaState().activeMediaPlayer.as((s) => !!s)}
                 cssClasses={["bar-button"]}
                 widthRequest={600}
+                onClicked={(self) => {
+                    self.add_css_class("active");
+                    const window = app.get_window("media-controls") as GlassyWidgets.ContrapshellPopoverWindow;
+                    const connId = window.connect("hide", () => {
+                        self.remove_css_class("active");
+                        window.disconnect(connId);
+                    });
+                    window.show_from(self);
+                }}
             >
                 <box
                     cssClasses={["media-controls-button-content"]}
@@ -395,17 +355,17 @@ export default function MediaControls() {
                     <box>
                         <label
                             cssClasses={["currently-playing"]}
-                            label={mediaState.previewLabelText}
+                            label={mediaState().playerState.previewLabelText}
                             hexpand={true}
                             xalign={0.5}
                             maxWidthChars={0}
                             wrap={true}
+                            wrapMode={Pango.WrapMode.CHAR}
                             ellipsize={Pango.EllipsizeMode.END}
                         />
                     </box>
                 </box>
-                <MediaControlsPopover />
-            </menubutton>
+            </button>
         </box>
     );
 }

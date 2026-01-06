@@ -1,11 +1,12 @@
 import { Gtk } from "ags/gtk4";
-import { CURSOR_POINTER, popdownParentMenuButton } from "../utils/gtk";
+import { CURSOR_POINTER, popdownParentWindow } from "../utils/gtk";
 import { execAsync } from "ags/process";
 import { currentDateString } from "../time/time_state";
+import app from "ags/gtk4/app";
 
-function CalendarPopover() {
+export function CalendarPopoverWindow() {
     return (
-        <glassypopover widthRequest={500}>
+        <contrapshellpopoverwindow name="calendar" widthRequest={500}>
             <box
                 orientation={Gtk.Orientation.VERTICAL}
                 cssClasses={["popover-standard-inner"]}
@@ -20,7 +21,7 @@ function CalendarPopover() {
                         valign={Gtk.Align.CENTER}
                         onClicked={(self) => {
                             execAsync("gnome-calendar");
-                            popdownParentMenuButton(self);
+                            popdownParentWindow(self);
                         }}
                     >
                         <box spacing={12}>
@@ -31,15 +32,27 @@ function CalendarPopover() {
                 </box>
                 <Gtk.Calendar cssClasses={["calendar-full"]} />
             </box>
-        </glassypopover>
+        </contrapshellpopoverwindow>
     );
 }
 
 export default function CalendarBarButton() {
     return (
-        <menubutton cssClasses={["calendar", "bar-button"]} halign={Gtk.Align.END} cursor={CURSOR_POINTER}>
+        <button
+            cssClasses={["calendar", "bar-button"]}
+            halign={Gtk.Align.END}
+            cursor={CURSOR_POINTER}
+            onClicked={(self) => {
+                self.add_css_class("active");
+                const window = app.get_window("calendar") as GlassyWidgets.ContrapshellPopoverWindow;
+                const connId = window.connect("hide", () => {
+                    self.remove_css_class("active");
+                    window.disconnect(connId);
+                });
+                window.show_from(self);
+            }}
+        >
             <label label={currentDateString.as((t) => t.replace(",", ""))} widthChars={11} />
-            <CalendarPopover />
-        </menubutton>
+        </button>
     );
 }

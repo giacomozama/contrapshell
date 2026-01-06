@@ -1,5 +1,5 @@
 import { Gtk } from "ags/gtk4";
-import { Accessor, onCleanup } from "gnim";
+import { Accessor, createEffect } from "gnim";
 import AstalHyprland from "gi://AstalHyprland?version=0.1";
 import { createBinding } from "gnim";
 import { CURSOR_POINTER } from "../utils/gtk";
@@ -85,8 +85,10 @@ export function WorkspaceSwitcher({ monitor }: { monitor: Monitor }) {
                 vexpand={true}
                 overflow={Gtk.Overflow.HIDDEN}
                 $={(self) => {
-                    onCleanup(workspacesBinding.subscribe(() => updateWorkspacesGrid(self, monitor)));
-                    updateWorkspacesGrid(self, monitor);
+                    createEffect(() => {
+                        workspacesBinding(); // track workspaces
+                        updateWorkspacesGrid(self, monitor);
+                    });
                 }}
             />
             <box class="workspace-switcher-border-r" vexpand={true} />

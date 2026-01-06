@@ -2,7 +2,7 @@ import { createRoot, With } from "gnim";
 import { firstNonFullscreenMonitor } from "../utils/monitors";
 import { Astal, Gtk } from "ags/gtk4";
 import app from "ags/gtk4/app";
-import { dismissNewNotificationWindow, notifsToShow } from "../notifications/notifications_state";
+import { notificationsState } from "../notifications/notifications_state";
 import { NotificationItem } from "./NotificationItem";
 import config from "../config";
 
@@ -13,23 +13,26 @@ export function NewNotificationWindow() {
                 <window
                     name="new-notification"
                     cssClasses={["NewNotification"]}
-                    gdkmonitor={firstNonFullscreenMonitor.as((m) => m.gdkMonitor)}
+                    gdkmonitor={firstNonFullscreenMonitor}
                     marginTop={44}
                     widthRequest={500}
                     defaultWidth={500}
                     exclusivity={Astal.Exclusivity.IGNORE}
                     anchor={Astal.WindowAnchor.TOP | Astal.WindowAnchor.RIGHT}
                     application={app}
-                    onDestroy={dispose}
+                    onCloseRequest={(self) => {
+                        dispose();
+                        self.destroy();
+                    }}
                     namespace={`${config.shellName}-overlay`}
                 >
-                    <box widthRequest={500} >
-                        <With value={notifsToShow}>
+                    <box widthRequest={500}>
+                        <With value={notificationsState().popupNotifs}>
                             {(notifs) =>
                                 notifs.length !== 0 && (
                                     <NotificationItem
                                         notification={notifs[0]}
-                                        onDismiss={dismissNewNotificationWindow}
+                                        onDismiss={notificationsState().dismissNewNotificationWindow}
                                     />
                                 )
                             }

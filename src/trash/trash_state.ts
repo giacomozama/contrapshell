@@ -5,15 +5,15 @@ import { execAsync } from "ags/process";
 
 export const isTrashFull = createPoll(
     false,
-    config.dock.trash.checkIsFullInterval,
-    config.dock.trash.checkIsFullCommand,
+    config.trash.checkIsFullInterval,
+    config.trash.checkIsFullCommand,
     (o) => o === "1"
 );
 
 export const trashActionGroup = new Gio.SimpleActionGroup();
 trashActionGroup.add_action_entries([
-    { name: "open", activate: () => execAsync(config.dock.trash.openCommand) },
-    { name: "clear", activate: () => execAsync(config.dock.trash.emptyCommand) },
+    { name: "open", activate: () => execAsync(config.trash.openCommand) },
+    { name: "clear", activate: () => execAsync(config.trash.emptyCommand) },
 ]);
 
 export const trashMenu = new Gio.Menu();

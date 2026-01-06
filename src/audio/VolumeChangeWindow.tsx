@@ -2,7 +2,7 @@ import { Astal, Gtk } from "ags/gtk4";
 import { firstNonFullscreenMonitor } from "../utils/monitors";
 import { createRoot } from "gnim";
 import app from "ags/gtk4/app";
-import { audioOutputState, volumeIconName } from "./audio_state";
+import { audioState } from "./audio_state";
 import config from "../config";
 
 export function VolumeChangeWindow() {
@@ -11,34 +11,31 @@ export function VolumeChangeWindow() {
             (
                 <window
                     name="volume-change"
-                    gdkmonitor={firstNonFullscreenMonitor.as((m) => m.gdkMonitor)}
+                    gdkmonitor={firstNonFullscreenMonitor}
                     exclusivity={Astal.Exclusivity.IGNORE}
                     anchor={Astal.WindowAnchor.TOP}
-                    cssClasses={["VolumeChange", "popover-standard-dark"]}
+                    cssClasses={["VolumeChange"]}
                     marginTop={240}
+                    widthRequest={382}
                     layer={Astal.Layer.OVERLAY}
                     halign={Gtk.Align.CENTER}
                     application={app}
                     overflow={Gtk.Overflow.HIDDEN}
-                    onDestroy={dispose}
+                    onCloseRequest={(self) => {
+                        dispose();
+                        self.destroy();
+                    }}
                     namespace={`${config.shellName}-overlay`}
                 >
-                    <box cssName="main-inner" vexpand={true} hexpand={true}>
-                        <box
-                            cssClasses={["current-volume"]}
-                            orientation={Gtk.Orientation.HORIZONTAL}
-                            hexpand={true}
-                            halign={Gtk.Align.CENTER}
-                            valign={Gtk.Align.CENTER}
-                        >
-                            <image iconName={volumeIconName} />
-                            <label label="Volume:" />
-                            <label
-                                cssClasses={["volume"]}
-                                label={audioOutputState.volume.as((v) => `${(v * 100).toFixed(0)}%`)}
-                                xalign={1}
-                            />
-                        </box>
+                    <box orientation={Gtk.Orientation.HORIZONTAL} valign={Gtk.Align.CENTER}>
+                        <image iconName={audioState().volumeIconName} pixelSize={32} />
+                        <label label="Volume:" hexpand={true} widthRequest={140} xalign={1} halign={Gtk.Align.START} />
+                        <label
+                            cssClasses={["volume"]}
+                            label={audioState().output.volume.as((v) => `${(v * 100).toFixed(0)}%`)}
+                            xalign={1}
+                            halign={Gtk.Align.END}
+                        />
                     </box>
                 </window>
             ) as Gtk.Window

@@ -1,6 +1,20 @@
 import AstalBluetooth from "gi://AstalBluetooth?version=0.1";
-import { createBinding } from "gnim";
+import { Accessor, createBinding, createRoot } from "gnim";
 
-export const astalBluetooth = AstalBluetooth.get_default();
+export type BluetoothState = {
+    devices: Accessor<AstalBluetooth.Device[]>;
+};
 
-export const bluetoothDevices = createBinding(astalBluetooth, "devices");
+let bluetoothStateInstance: BluetoothState | null = null;
+
+function createBluetoothState(): BluetoothState {
+    bluetoothStateInstance = {
+        devices: createBinding(AstalBluetooth.get_default(), "devices"),
+    };
+
+    return bluetoothStateInstance;
+}
+
+export function bluetoothState(): BluetoothState {
+    return bluetoothStateInstance ?? createRoot(createBluetoothState);
+}

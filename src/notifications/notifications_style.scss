@@ -35,19 +35,17 @@
     }
 }
 
-.notif-bar-button {
-    .notif-bar-items {
-        .notif-bar-item {
-            border-radius: 0;
-            box-shadow: none;
-            background: none;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 24px;
+.notif-bar-items {
+    .notif-bar-item {
+        border-radius: 0;
+        box-shadow: none;
+        background: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 24px;
 
-            image {
-                -gtk-icon-size: 32px;
-                margin: 0 18px 0 0;
-            }
+        image {
+            -gtk-icon-size: 32px;
+            margin: 0 18px 0 0;
         }
     }
 }

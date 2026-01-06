@@ -1,5 +1,7 @@
+@use "../common";
+
 .hourly-weather-item {
-    padding: 24px 0;
+    padding: 12px 0;
     font-size: 20px;
 
     .date {
@@ -16,48 +18,68 @@
     }
 
     &:not(:last-child) {
-        border-right: 1px solid rgba(255, 255, 255, 0.1);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .rain-probability {
         font-size: 16px;
-        opacity: 0.6;
+    }
+
+    .weather-data {
+        font-size: 16px;
     }
 }
 
-.weather {
-    > menubutton {
-        min-width: 90px;
-    }
-}
-
-.weather-visualizer {
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.05);
+.weather-panel {
+    border-radius: common.$background-panel-border-radius;
+    @include common.glassy-background;
+    box-shadow: none;
 
     .current-weather {
-        font-size: 120px;
-        font-weight: 600;
         font-family: Bebas Neue;
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
 
         .temp {
-            margin-top: 18px;
+            font-size: 60px;
+
+            image {
+                margin-top: -6px;
+                margin-right: 12px;
+            }
+        }
+
+        .rain-and-humidity {
+            margin: -12px 0 -4px 0;
+        }
+
+        .rain,
+        .humidity,
+        .wind-speed {
+            font-size: 40px;
+        }
+
+        .wind {
+            padding-right: 12px;
+        }
+    }
+
+    .gloss {
+        border-radius: common.$background-panel-border-radius;
+        @include common.glassy-background;
+        background: none;
+        border: none;
+    }
+
+    .wind-indicator {
+        image {
+            color: rgb(common.$accent-2-rgb);
         }
     }
 
     .hourly-list {
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
-
         .hourly-weather-item {
-            .hourly-weather-item {
-                padding: 24px 0;
-                font-size: 20px;
-
-                .weather-type-icon {
-                    -gtk-icon-size: 32px;
-                    margin: 0 0 24px 0;
-                }
-            }
+            padding: 12px 24px;
+            font-size: 20px;
         }
     }
 }

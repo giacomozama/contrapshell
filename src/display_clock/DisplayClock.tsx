@@ -22,14 +22,14 @@ const currentDateString = createPoll(getDateString(), 1000, getDateString);
 
 export function DisplayClock() {
     return (
-        <box halign={Gtk.Align.END} spacing={8} vexpandSet={true} hexpandSet={true}>
+        <box hexpand={true} vexpandSet={true} class="display-clock-calendar">
             <box
                 class="display-clock"
                 orientation={Gtk.Orientation.VERTICAL}
                 overflow={Gtk.Overflow.HIDDEN}
-                hexpand={true}
-                vexpand={true}
+                halign={Gtk.Align.START}
                 spacing={8}
+                vexpand={true}
             >
                 <box class="hour" spacing={8} vexpand={true}>
                     <label label={currentDateString.as((t) => t[2].charAt(0))} />
@@ -40,15 +40,9 @@ export function DisplayClock() {
                     <label label={currentDateString.as((t) => t[3].charAt(1))} />
                 </box>
             </box>
-            <box
-                class="display-calendar"
-                orientation={Gtk.Orientation.VERTICAL}
-                widthRequest={340}
-                spacing={8}
-                vexpandSet={true}
-            >
-                <label class="month" label={currentDateString.as((t) => t[0])} />
-                <label class="day" label={currentDateString.as((t) => t[1])} vexpand={true} />
+            <box class="display-calendar" orientation={Gtk.Orientation.VERTICAL} spacing={8} hexpand={true}>
+                <label class="month" hexpand={true} label={currentDateString.as((t) => t[0])} />
+                <label class="day" hexpand={true} label={currentDateString.as((t) => t[1])} vexpand={true} />
             </box>
         </box>
     );

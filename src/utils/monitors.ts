@@ -1,7 +1,7 @@
 import { Gdk, Gtk } from "ags/gtk4";
 import app from "ags/gtk4/app";
 import AstalHyprland from "gi://AstalHyprland?version=0.1";
-import { createBinding, createComputed, createState } from "gnim";
+import { createBinding, createComputed, createEffect } from "gnim";
 import config from "../config";
 import GObject from "gnim/gobject";
 
@@ -11,132 +11,57 @@ export type Monitor = {
     hyprlandMonitor: AstalHyprland.Monitor;
 };
 
-export const appMonitors = createBinding(app, "monitors").as((monitors) => {
-    const hyprland = AstalHyprland.get_default();
-    const hyprMonitors = hyprland.get_monitors();
-    const hyprMonitorsByName = Object.fromEntries(hyprMonitors.map((m) => [m.name, m]));
-    const monitorIndex = Object.fromEntries(config.monitors.monitorOrder.map((m, i) => [m, i]));
-    return monitors
-        .map(
-            (monitor) =>
-                ({
-                    connector: monitor.connector,
-                    gdkMonitor: monitor,
-                    hyprlandMonitor: hyprMonitorsByName[monitor.connector],
-                } as Monitor)
-        )
-        .sort((a, b) => monitorIndex[a.connector] - monitorIndex[b.connector]);
-});
+const gdkMonitorsBinding = createBinding(app, "monitors");
 
-function getFirstNonFullscreenMonitor() {
-    const [firstNonFullScreenMonitor, setFirstNonFullScreenMonitor] = createState(appMonitors.get()[0]);
+export const firstNonFullscreenMonitor = createComputed(() => {
+    const monitorOrder = config.monitors.monitorOrder;
 
-    let disposeWatchWorkspaces: (() => void) | undefined;
-    let disposeWatchClients: (() => void) | undefined;
-    let disposeWatchFullscreen: (() => void) | undefined;
+    const gdkMonitors = gdkMonitorsBinding();
+    gdkMonitors.sort((a, b) => monitorOrder.indexOf(a.connector) - monitorOrder.indexOf(b.connector));
 
-    function watchMonitors() {
-        disposeWatchWorkspaces?.();
-        disposeWatchClients?.();
-        disposeWatchFullscreen?.();
+    let result: Gdk.Monitor | undefined;
 
-        const withActiveWorkspacesBindings = appMonitors
-            .get()
-            .map((m) => ({ monitor: m, activeWorkspaceBinding: createBinding(m.hyprlandMonitor, "activeWorkspace") }));
+    for (const monitor of gdkMonitors) {
+        const hyprMonitor = AstalHyprland.get_default().get_monitor_by_name(monitor.connector);
+        if (!hyprMonitor) continue;
 
-        const withActiveWorkspacesBinding = createComputed((get) => {
-            return withActiveWorkspacesBindings.map(({ monitor, activeWorkspaceBinding }) => {
-                return {
-                    monitor,
-                    activeWorkspace: get(activeWorkspaceBinding),
-                };
-            });
-        });
+        const clients = createBinding(hyprMonitor, "activeWorkspace", "clients")();
 
-        function watchWorkspaces() {
-            disposeWatchClients?.();
-            disposeWatchFullscreen?.();
-
-            const workspaces = withActiveWorkspacesBinding.get();
-
-            const withClientsBindings = workspaces.map(({ monitor, activeWorkspace }) => ({
-                monitor,
-                clientsBinding: createBinding(activeWorkspace, "clients"),
-            }));
-
-            const withClientsBinding = createComputed((get) =>
-                withClientsBindings.map(({ monitor, clientsBinding }) => ({
-                    monitor,
-                    clients: get(clientsBinding),
-                }))
-            );
-
-            function watchClients() {
-                disposeWatchFullscreen?.();
-
-                const withFullscreenBindings = withClientsBinding.get().map(({ monitor, clients }) => ({
-                    monitor,
-                    fullscreenBinding: createComputed(
-                        clients.map((c) =>
-                            createBinding(c, "fullscreen").as((f) => f === AstalHyprland.Fullscreen.FULLSCREEN)
-                        ),
-                        (...fs) => fs.some((b) => b)
-                    ),
-                }));
-
-                const withFullscreenBinding = createComputed((get) =>
-                    withFullscreenBindings.map(({ monitor, fullscreenBinding }) => ({
-                        monitor,
-                        fullscreen: get(fullscreenBinding),
-                    }))
-                );
-
-                function watchFullscreen() {
-                    const withFullscreen = withFullscreenBinding.get();
-                    setFirstNonFullScreenMonitor(withFullscreen.find((m) => !m.fullscreen)?.monitor ?? withFullscreen[0].monitor)
-                }
-
-                disposeWatchFullscreen = withFullscreenBinding.subscribe(watchFullscreen)
-                watchFullscreen();
+        for (const client of clients) {
+            // avoid breaking after finding the monitor (for tracking purposes)
+            if (createBinding(client, "fullscreen")() === AstalHyprland.Fullscreen.FULLSCREEN && !result) {
+                result = monitor;
             }
-
-            disposeWatchClients = withClientsBinding.subscribe(watchClients);
-            watchClients();
         }
 
-        disposeWatchWorkspaces = withActiveWorkspacesBinding.subscribe(watchWorkspaces);
-        watchWorkspaces();
+        if (!clients.some((c) => c.fullscreen === AstalHyprland.Fullscreen.FULLSCREEN)) {
+            return monitor;
+        }
     }
 
-    appMonitors.subscribe(watchMonitors);
-    watchMonitors();
-
-    return firstNonFullScreenMonitor;
-}
-
-export const firstNonFullscreenMonitor = getFirstNonFullscreenMonitor();
+    return result ?? gdkMonitors[0];
+});
 
 export function rememberForEachMonitor(factory: (monitor: Monitor) => GObject.Object) {
     const existing: { [key: string]: GObject.Object | undefined } = {};
 
-    function onMonitorsChanged() {
-        const monitors = appMonitors.get();
+    createEffect(() => {
+        const gdkMonitors = gdkMonitorsBinding();
 
-        for (const monitor of monitors) {
-            if (!existing[monitor.connector]) {
-                existing[monitor.connector] = factory(monitor);
-            }
+        for (const gdkMonitor of gdkMonitors) {
+            if (existing[gdkMonitor.connector]) continue;
+
+            existing[gdkMonitor.connector] = factory({
+                connector: gdkMonitor.connector,
+                gdkMonitor,
+                hyprlandMonitor: AstalHyprland.get_default().get_monitor_by_name(gdkMonitor.connector)!,
+            });
         }
 
-        const existingKeys = Object.keys(existing);
-        for (const key of existingKeys) {
-            if (!monitors.some((m) => m.connector === key)) {
-                (existing[key] as Gtk.Window).destroy();
-                delete existing[key];
-            }
+        for (const key of Object.keys(existing)) {
+            if (gdkMonitors.some((m) => m.connector === key)) continue;
+            (existing[key] as Gtk.Window).close();
+            delete existing[key];
         }
-    }
-
-    appMonitors.subscribe(onMonitorsChanged);
-    onMonitorsChanged();
+    });
 }

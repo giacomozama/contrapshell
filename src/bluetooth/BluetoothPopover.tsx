@@ -1,11 +1,11 @@
 import { Gtk } from "ags/gtk4";
-import { CURSOR_POINTER, popdownParentMenuButton } from "../utils/gtk";
+import { CURSOR_POINTER, popdownParentWindow } from "../utils/gtk";
 import AstalBluetooth from "gi://AstalBluetooth?version=0.1";
 import { createBinding, For } from "gnim";
 import Pango from "gi://Pango?version=1.0";
 import { execAsync } from "ags/process";
 import config from "../config";
-import { astalBluetooth, bluetoothDevices } from "./bluetooth_state";
+import { bluetoothState } from "./bluetooth_state";
 
 function BluetoothDeviceItem({ device }: { device: AstalBluetooth.Device }) {
     return (
@@ -27,33 +27,35 @@ function BluetoothDeviceItem({ device }: { device: AstalBluetooth.Device }) {
                 valign={Gtk.Align.CENTER}
                 halign={Gtk.Align.END}
                 cursor={CURSOR_POINTER}
-                onStateSet={(self) => {
-                    if (device.connected) {
-                        device.disconnect_device((_, result) => {
-                            try {
-                                device.disconnect_device_finish(result);
-                            } catch {
-                                self.active = true;
-                            }
-                        });
-                    } else {
-                        device.connect_device((_, result) => {
-                            try {
-                                device.connect_device_finish(result);
-                            } catch {
-                                self.active = false;
-                            }
-                        });
-                    }
-                }}
-            />
+            >
+                <Gtk.GestureClick
+                    button={1}
+                    onBegin={() => {
+                        if (device.connected) {
+                            device.disconnect_device((_, result) => {
+                                try {
+                                    device.disconnect_device_finish(result);
+                                } catch {
+                                }
+                            });
+                        } else if (!device.connected) {
+                            device.connect_device((_, result) => {
+                                try {
+                                    device.connect_device_finish(result);
+                                } catch {
+                                }
+                            });
+                        }
+                    }}
+                />
+            </switch>
         </box>
     );
 }
 
-export function BluetoothPopover() {
+export function BluetoothPopoverWindow() {
     return (
-        <glassypopover widthRequest={420}>
+        <contrapshellpopoverwindow name="bluetooth" widthRequest={420}>
             <box
                 orientation={Gtk.Orientation.VERTICAL}
                 cssClasses={["popover-standard-inner"]}
@@ -67,7 +69,7 @@ export function BluetoothPopover() {
                         valign={Gtk.Align.CENTER}
                         onClicked={(self) => {
                             execAsync(config.bluetooth.bluetoothSettingsCommand);
-                            popdownParentMenuButton(self);
+                            popdownParentWindow(self);
                         }}
                     >
                         <box spacing={12}>
@@ -88,13 +90,13 @@ export function BluetoothPopover() {
                     >
                         <label label="Enabled" hexpand={true} xalign={0} />
                         <switch
-                            active={createBinding(astalBluetooth.adapter, "powered")}
+                            active={createBinding(AstalBluetooth.get_default().adapter, "powered")}
                             cursor={CURSOR_POINTER}
                             valign={Gtk.Align.CENTER}
                             halign={Gtk.Align.END}
                             onStateSet={() => {
-                                const commandArg = astalBluetooth.adapter.powered ? "off" : "on";
-                                execAsync(`bluetoothctl power ${commandArg}`);
+                                const commandArg = AstalBluetooth.get_default().adapter.powered ? "off" : "on";
+                                execAsync(`${config.path.bluetoothctl} power ${commandArg}`);
                             }}
                         />
                     </box>
@@ -104,9 +106,9 @@ export function BluetoothPopover() {
                         hexpand={true}
                         xalign={0}
                     />
-                    <For each={bluetoothDevices}>{(device) => <BluetoothDeviceItem device={device} />}</For>
+                    <For each={bluetoothState().devices}>{(device) => <BluetoothDeviceItem device={device} />}</For>
                 </box>
             </box>
-        </glassypopover>
+        </contrapshellpopoverwindow>
     );
 }

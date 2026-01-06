@@ -1,19 +1,17 @@
-import { execAsync } from "ags/process";
 import { CURSOR_POINTER } from "../utils/gtk";
-import config from "../config";
-import { isInhibited, setIsInhibited } from "./caffeine_state";
+import { caffeineState } from "./caffeine_state";
 
 export default function CaffeineBarButton() {
     return (
         <box class="bar-chip">
-            <togglebutton
-                active={isInhibited}
+            <button
                 cursor={CURSOR_POINTER}
                 onClicked={() => {
-                    setIsInhibited(!isInhibited.get());
-                    execAsync(config.caffeine.toggleCommand);
+                    caffeineState().toggleInhibitor();
                 }}
-                iconName={isInhibited.as((i) => (i ? "my-caffeine-on-symbolic" : "my-caffeine-off-symbolic"))}
+                iconName={caffeineState().isInhibitorActive.as((isActive) =>
+                    isActive ? "my-caffeine-on-symbolic" : "my-caffeine-off-symbolic"
+                )}
             />
         </box>
     );

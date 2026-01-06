@@ -1,10 +1,12 @@
-import { exec } from "ags/process";
 import config from "../config";
 import { BottlesLibrary, GameLauncherEntry } from "./types";
+import { parse } from "yaml";
+import { readFile } from "ags/file";
+import { execAsync } from "ags/process";
 
 export const bottlesEntries: GameLauncherEntry[] = (() => {
-    const bottlesLibraryRaw = exec(`/bin/bash -c "${config.path.yaml2json} < \"${config.gameLaunchers.bottles.libraryFilePath}\""`);
-    const bottlesLibrary = JSON.parse(bottlesLibraryRaw) as BottlesLibrary;
+    const bottlesLibraryRaw = readFile(config.gameLaunchers.bottles.libraryFilePath);
+    const bottlesLibrary = parse(bottlesLibraryRaw) as BottlesLibrary;
     const entries: GameLauncherEntry[] = [];
 
     for (const program of Object.values(bottlesLibrary)) {
@@ -12,7 +14,9 @@ export const bottlesEntries: GameLauncherEntry[] = (() => {
 
         entries.push({
             title: program.name,
-            command: `${config.path.bottlesCli} run -b ${program.bottle.name} -p "${program.name}"`,
+            command: () => {
+                execAsync(`${config.path.bottlesCli} run -b ${program.bottle.name} -p "${program.name}"`).catch();
+            },
             image,
         });
     }

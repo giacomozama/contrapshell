@@ -1,9 +1,12 @@
 import { Gtk } from "ags/gtk4";
 import { Album, Song } from "./types";
 import { CURSOR_POINTER } from "../utils/gtk";
-import { Accessor, createState, For, onCleanup } from "gnim";
+import { Accessor, createComputed, createEffect, createState, For, onCleanup } from "gnim";
 import Pango from "gi://Pango?version=1.0";
-import { currentMpdSongFile, mpdMusicLibrary, mpdPlayAlbum, mpdShufflePlayAll } from "./mpd_state";
+import { mpdState } from "./mpd_state";
+import config from "../config";
+import giCairo from "cairo";
+import AstalMpris from "gi://AstalMpris?version=0.1";
 
 const width = 550;
 const padding = 24;
@@ -34,7 +37,7 @@ function PlaylistList({
                 columnSpacing={spacing}
                 marginBottom={24}
             >
-                <For each={mpdMusicLibrary}>
+                <For each={mpdState().mpdMusicLibrary}>
                     {(album) => (
                         <button
                             cssClasses={["mpd-album-button"]}
@@ -106,7 +109,7 @@ function AlbumList({
                 columnSpacing={spacing}
                 marginBottom={24}
             >
-                <For each={mpdMusicLibrary}>
+                <For each={mpdState().mpdMusicLibrary}>
                     {(album) => (
                         <button
                             cssClasses={["mpd-album-button"]}
@@ -184,7 +187,6 @@ function SongList({
                             marginEnd={24}
                             halign={Gtk.Align.START}
                             valign={Gtk.Align.CENTER}
-                            orientation={Gtk.Orientation.VERTICAL}
                         >
                             <box
                                 css={selectedAlbum.as((a) => `background-image: url("file://${a?.coverArtPath}");`)}
@@ -226,18 +228,14 @@ function SongList({
                 <For each={selectedAlbum.as((a) => a?.songs ?? [])}>
                     {(song: Song, index) => (
                         <button
-                            cssClasses={currentMpdSongFile.as((f) =>
-                                f === song.file
-                                    ? ["mpd-song-button", "popover-control-list-item", "current"]
-                                    : ["mpd-song-button", "popover-control-list-item"]
-                            )}
+                            cssClasses={["mpd-song-button", "popover-control-list-item"]}
                             cursor={CURSOR_POINTER}
                             valign={Gtk.Align.START}
-                            onClicked={() => mpdPlayAlbum(selectedAlbum.get()!, index.get())}
+                            onClicked={() => mpdState().mpdPlayAlbum(selectedAlbum.peek()!, index.peek())}
                         >
                             <box>
-                                <label class="track" label={`${index.get() + 1}`} widthChars={2} xalign={0} />
-                                <box hexpand={true} orientation={Gtk.Orientation.VERTICAL} valign={Gtk.Align.CENTER}>
+                                <label class="track" label={`${index.peek() + 1}`} widthChars={2} xalign={0} />
+                                <box orientation={Gtk.Orientation.VERTICAL} valign={Gtk.Align.CENTER} marginEnd={18}>
                                     <label
                                         class="title"
                                         label={song.title}
@@ -249,9 +247,17 @@ function SongList({
                                         label={song.artist}
                                         xalign={0}
                                         ellipsize={Pango.EllipsizeMode.END}
-                                        visible={song.artist != selectedAlbum.get()?.artist}
+                                        visible={song.artist != selectedAlbum.peek()?.artist}
                                     />
                                 </box>
+                                <NowPlayingAnimatedIcon
+                                    visible={createComputed(() => {
+                                        const f = mpdState().mpdCurrentSongFile();
+                                        const p = mpdState().mpdPlaybackStatus();
+                                        return f === song.file && p === AstalMpris.PlaybackStatus.PLAYING;
+                                    })}
+                                />
+                                <box hexpand={true} />
                                 {song.time && <label class="time" label={song.time} />}
                             </box>
                         </button>
@@ -262,24 +268,87 @@ function SongList({
     );
 }
 
-export default function MusicLibraryPopover() {
+const nowPlayingAnimatedIconGradient = (() => {
+    const gradient = new giCairo.LinearGradient(0, 0, 32, 32);
+    let { red: red1, green: green1, blue: blue1 } = config.colors.accent1;
+    gradient.addColorStopRGB(0, red1, green1, blue1);
+    let { red: red2, green: green2, blue: blue2 } = config.colors.accent2;
+    gradient.addColorStopRGB(1, red2, green2, blue2);
+    return gradient;
+})();
+
+function NowPlayingAnimatedIcon({ visible }: { visible: Accessor<boolean> }) {
+    let lastFrame = 0;
+    const strokeWidth = 6;
+    const hStrokeWidth = strokeWidth / 2;
+
+    return (
+        <drawingarea
+            visible={visible}
+            widthRequest={32}
+            heightRequest={32}
+            valign={Gtk.Align.CENTER}
+            onMap={(self) => {
+                self.add_tick_callback((_, clock) => {
+                    const now = clock.get_frame_time();
+                    if (now - lastFrame > 20_000) {
+                        lastFrame = now;
+                        self.queue_draw();
+                    }
+                    return self.get_mapped();
+                });
+            }}
+            $={(self) => {
+                self.set_draw_func((area, cr, _, height) => {
+                    const t = area.get_frame_clock()!.get_frame_time() / 110_000;
+                    const a = 4 + ((1 + Math.cos(t + Math.PI / 2)) / 2) * (height - 8 - hStrokeWidth);
+                    const b = 4 + ((1 + Math.cos(t + Math.PI)) / 2) * (height - 8 - hStrokeWidth);
+                    const c = 4 + ((1 + Math.cos(t)) / 2) * (height - 8 - hStrokeWidth);
+
+                    cr.moveTo(hStrokeWidth, height / 2 - a / 2);
+                    cr.lineTo(hStrokeWidth, height / 2 + a / 2);
+
+                    cr.moveTo(hStrokeWidth * 4, height / 2 - b / 2);
+                    cr.lineTo(hStrokeWidth * 4, height / 2 + b / 2);
+
+                    cr.moveTo(hStrokeWidth * 7, height / 2 - c / 2);
+                    cr.lineTo(hStrokeWidth * 7, height / 2 + c / 2);
+
+                    cr.setSource(nowPlayingAnimatedIconGradient);
+                    cr.setLineWidth(strokeWidth);
+                    cr.setLineCap(giCairo.LineCap.ROUND);
+                    cr.stroke();
+
+                    cr.$dispose();
+                });
+            }}
+        />
+    );
+}
+
+export default function MusicLibraryPopoverWindow() {
     const [currentPage, setCurrentPage] = createState("library");
     const [selectedAlbum, setSelectedAlbum] = createState<Album | null>(null);
 
     const flowBoxVadjustment = new Gtk.Adjustment();
 
     return (
-        <glassypopover
+        <contrapshellpopoverwindow
+            name={"music-library"}
+            anchoredToDock={true}
+            widthRequest={width}
             heightRequest={678}
-            hasArrow={false}
-            marginBottom={15}
             onHide={() => {
                 flowBoxVadjustment.set_value(0);
                 setCurrentPage("library");
                 setSelectedAlbum(null);
             }}
         >
-            <box orientation={Gtk.Orientation.VERTICAL} widthRequest={width} cssClasses={["popover-standard-inner"]}>
+            <box
+                orientation={Gtk.Orientation.VERTICAL}
+                widthRequest={width}
+                cssClasses={["popover-standard-inner", "mpd"]}
+            >
                 <box orientation={Gtk.Orientation.HORIZONTAL} cssClasses={["popover-title"]} valign={Gtk.Align.START}>
                     <image iconName={"emblem-music"} halign={Gtk.Align.START} />
                     <label label={"Music"} xalign={0} hexpand={true} />
@@ -292,7 +361,7 @@ export default function MusicLibraryPopover() {
                     <button
                         cursor={CURSOR_POINTER}
                         valign={Gtk.Align.CENTER}
-                        onClicked={mpdShufflePlayAll}
+                        onClicked={mpdState().mpdShufflePlayAll}
                         // sensitive={currentPage.as((p) => p !== "album")}
                     >
                         <box spacing={12}>
@@ -304,9 +373,7 @@ export default function MusicLibraryPopover() {
                 <stack
                     transitionType={Gtk.StackTransitionType.CROSSFADE}
                     transitionDuration={100}
-                    $={(self) => {
-                        onCleanup(currentPage.subscribe(() => self.set_visible_child_name(currentPage.get())));
-                    }}
+                    $={(self) => createEffect(() => self.set_visible_child_name(currentPage()))}
                 >
                     <AlbumList
                         flowBoxVadjustment={flowBoxVadjustment}
@@ -317,6 +384,6 @@ export default function MusicLibraryPopover() {
                     {/* <PlaylistList /> */}
                 </stack>
             </box>
-        </glassypopover>
+        </contrapshellpopoverwindow>
     );
 }

@@ -5,15 +5,9 @@ import { CURSOR_POINTER } from "../utils/gtk";
 import Pango from "gi://Pango?version=1.0";
 import { execAsync } from "ags/process";
 import config from "../config";
-import { popdownParentMenuButton } from "../utils/gtk";
-import {
-    audioInputState,
-    audioOutputState,
-    AudioState,
-    onHideAudioPopover,
-    onShowAudioPopover,
-    volumeIconName,
-} from "./audio_state";
+import { popdownParentWindow } from "../utils/gtk";
+import { audioState, AudioIOState } from "./audio_state";
+import app from "ags/gtk4/app";
 
 function AudioDeviceItem({ endpoint }: { endpoint: Wp.Endpoint }) {
     return (
@@ -46,7 +40,7 @@ function AudioDeviceItem({ endpoint }: { endpoint: Wp.Endpoint }) {
     );
 }
 
-function VolumeControlAndDefaultDeviceSelector({ state }: { state: AudioState }) {
+function VolumeControlAndDefaultDeviceSelector({ state }: { state: AudioIOState }) {
     return (
         <box orientation={Gtk.Orientation.VERTICAL}>
             <box
@@ -64,7 +58,7 @@ function VolumeControlAndDefaultDeviceSelector({ state }: { state: AudioState })
                     <Gtk.GestureSingle
                         button={1}
                         onEnd={() => {
-                            const endpoint = state.defaultEndpoint.get();
+                            const endpoint = state.defaultEndpoint.peek();
                             endpoint.set_mute(!endpoint.get_mute());
                         }}
                     />
@@ -77,7 +71,7 @@ function VolumeControlAndDefaultDeviceSelector({ state }: { state: AudioState })
                     hexpand={true}
                     sensitive={state.muted.as((m) => !m)}
                     onChangeValue={(self) => {
-                        state.defaultEndpoint.get().set_volume(self.value);
+                        state.defaultEndpoint.peek().set_volume(self.value);
                     }}
                 />
             </box>
@@ -86,9 +80,14 @@ function VolumeControlAndDefaultDeviceSelector({ state }: { state: AudioState })
     );
 }
 
-function AudioControlsPopover() {
+export function AudioControlsPopoverWindow() {
     return (
-        <glassypopover widthRequest={400} onShow={() => onShowAudioPopover()} onHide={() => onHideAudioPopover()}>
+        <contrapshellpopoverwindow
+            name={"audio-controls"}
+            widthRequest={400}
+            onShow={() => audioState().onShowAudioPopover()}
+            onHide={() => audioState().onHideAudioPopover()}
+        >
             <box cssClasses={["popover-standard-inner"]} orientation={Gtk.Orientation.VERTICAL} hexpand={true}>
                 <box orientation={Gtk.Orientation.HORIZONTAL} cssClasses={["popover-title"]} hexpand={true}>
                     <image iconName="sound-wave-symbolic" halign={Gtk.Align.START} valign={Gtk.Align.CENTER} />
@@ -96,7 +95,7 @@ function AudioControlsPopover() {
                     <button
                         onClicked={(self) => {
                             execAsync(config.audioControls.audioSettingsCommand);
-                            popdownParentMenuButton(self);
+                            popdownParentWindow(self);
                         }}
                         cursor={CURSOR_POINTER}
                         valign={Gtk.Align.CENTER}
@@ -108,26 +107,38 @@ function AudioControlsPopover() {
                     </button>
                 </box>
                 <box orientation={Gtk.Orientation.VERTICAL} hexpand={true} class={"popover-control-list"}>
-                    <VolumeControlAndDefaultDeviceSelector state={audioOutputState} />
-                    <VolumeControlAndDefaultDeviceSelector state={audioInputState} />
+                    <VolumeControlAndDefaultDeviceSelector state={audioState().output} />
+                    <VolumeControlAndDefaultDeviceSelector state={audioState().input} />
                 </box>
             </box>
-        </glassypopover>
+        </contrapshellpopoverwindow>
     );
 }
 
 export default function AudioControls() {
     return (
-        <menubutton widthRequest={100} cssClasses={["audio-controls", "bar-button"]} cursor={CURSOR_POINTER}>
+        <button
+            widthRequest={100}
+            cssClasses={["audio-controls", "bar-button"]}
+            cursor={CURSOR_POINTER}
+            onClicked={(self) => {
+                self.add_css_class("active");
+                const window = app.get_window("audio-controls") as GlassyWidgets.ContrapshellPopoverWindow;
+                const connId = window.connect("hide", () => {
+                    self.remove_css_class("active");
+                    window.disconnect(connId);
+                });
+                window.show_from(self);
+            }}
+        >
             <box orientation={Gtk.Orientation.HORIZONTAL} hexpand={true}>
-                <image iconName={volumeIconName} />
+                <image iconName={audioState().volumeIconName} />
                 <label
-                    label={audioOutputState.volume.as((v) => `${(v * 100).toFixed(0)}%`)}
+                    label={audioState().output.volume.as((v) => `${(v * 100).toFixed(0)}%`)}
                     hexpand={true}
                     halign={Gtk.Align.END}
                 />
             </box>
-            <AudioControlsPopover />
-        </menubutton>
+        </button>
     );
 }

@@ -40,7 +40,7 @@ export default function ShutdownWindow() {
                     name="shutdown"
                     class="Shutdown"
                     layer={Astal.Layer.OVERLAY}
-                    gdkmonitor={firstNonFullscreenMonitor.as((m) => m.gdkMonitor)}
+                    gdkmonitor={firstNonFullscreenMonitor}
                     keymode={Astal.Keymode.EXCLUSIVE}
                     exclusivity={Astal.Exclusivity.IGNORE}
                     anchor={

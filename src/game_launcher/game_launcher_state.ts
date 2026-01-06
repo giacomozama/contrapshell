@@ -1,38 +1,40 @@
-import AstalApps from "gi://AstalApps?version=0.1";
-import { GameLauncherEntry } from "./types";
+import { GameLauncherListEntry } from "./types";
 import config from "../config";
 import { steamEntries } from "./steam";
 import { bottlesEntries } from "./bottles";
+import GioUnix from "gi://GioUnix?version=2.0";
 
-interface GameLauncherListEntry {
-    id: string;
-    iconName: string;
-    app: AstalApps.Application;
-    entries: GameLauncherEntry[];
-}
+export const launchers: GameLauncherListEntry[] = (() => {
+    const enabledLaunchers = Object.keys(config.gameLaunchers);
+    const launchers = [];
 
-const astalApps = new AstalApps.Apps();
+    if (enabledLaunchers.includes("steam")) {
+        try {
+            const app = GioUnix.DesktopAppInfo.new("steam.desktop");
+            launchers.push({
+                id: "steam",
+                iconName: app.get_icon()?.to_string() ?? "",
+                app,
+                entries: steamEntries,
+            });
+        } catch (e) {
+            printerr("Couldn't get Steam application, is it installed?");
+        }
+    }
 
-const enabledLaunchers = Object.keys(config.gameLaunchers);
+    if (enabledLaunchers.includes("bottles")) {
+        try {
+            const app = GioUnix.DesktopAppInfo.new("com.usebottles.bottles.desktop");
+            launchers.push({
+                id: "bottles",
+                iconName: app.get_icon()?.to_string() ?? "",
+                app,
+                entries: bottlesEntries,
+            });
+        } catch (e) {
+            printerr("Couldn't get Bottles application, is it installed?");
+        }
+    }
 
-export const launchers: GameLauncherListEntry[] = [];
-
-if (enabledLaunchers.includes("steam")) {
-    const app = astalApps.exact_query("steam")[0];
-    launchers.push({
-        id: "steam",
-        iconName: app.iconName,
-        app,
-        entries: steamEntries,
-    });
-}
-
-if (enabledLaunchers.includes("bottles")) {
-    const app = astalApps.exact_query("bottles")[0];
-    launchers.push({
-        id: "bottles",
-        iconName: app.iconName,
-        app,
-        entries: bottlesEntries,
-    });
-}
+    return launchers;
+})();

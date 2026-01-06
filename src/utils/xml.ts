@@ -48,16 +48,14 @@ export default function parseXML(xml: string, withNS?: boolean): XmlDocument {
     if (doc.root && withNS === true) applyNS(doc.root);
     return doc;
 
-    function encodeCDATA(str: string): string {
-        const shadow = str
-            .split(`<![CDATA[`)[1]
-            .split(`]]>`)[0]
-            .replace(/</, `[_*[$(<)$]*_]`)
-            .replace(/>/, `[_*[$(>)$]*_]`)
-            .replace(/\//, `[_*[$(/)$]*_]`)
-            .replace(/\\/, `[_*[$(LS)$]*_]`);
-
-        return `<![CDATA[${shadow}]]>`;
+    function encodeCDATA(str: string): string {       
+        return str
+        .split(`<![CDATA[`)[1]
+        .split(`]]>`)[0]
+        .replace(/</, `[_*[$(<)$]*_]`)
+        .replace(/>/, `[_*[$(>)$]*_]`)
+        .replace(/\//, `[_*[$(/)$]*_]`)
+        .replace(/\\/, `[_*[$(LS)$]*_]`);
     }
 
     function decodeCDATA(str: string): string {

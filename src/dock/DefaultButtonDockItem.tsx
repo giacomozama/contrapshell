@@ -1,13 +1,13 @@
 import { Gtk } from "ags/gtk4";
 import { Monitor } from "../utils/monitors";
 import { DockItem } from "./types";
-import { createComputed, createState, onCleanup } from "gnim";
-import { findAppClient, isAppRunning, launchOrFocus } from "../utils/apps";
+import { createComputed, createEffect, createState, onCleanup } from "gnim";
+import { findAppClient, isAppRunning, launchInHomeDir, launchOrFocus } from "../utils/apps";
 import Gio from "gi://Gio?version=2.0";
 import { CURSOR_POINTER } from "../utils/gtk";
 import { popupParentMenuButton } from "../utils/gtk";
 import { Squircle } from "../misc/Squircle";
-import { GlassyMenu } from "../misc/GlassyPopover";
+import { ContrapshellPopoverMenu } from "../misc/GlassyPopover";
 import config from "../config";
 
 const appMenuModel = new Gio.Menu();
@@ -25,9 +25,11 @@ export function DefaultButtonDockItem({
     monitor: Monitor;
 }) {
     const isAppRunningBinding = isAppRunning(item.app!);
-    const [justOpened, setJustOpened] = createState(false);
+    const [justOpenedState, setJustOpenedState] = createState(false);
 
-    const cssClasses = createComputed([isAppRunningBinding, justOpened], (isAppRunning, justOpened) => {
+    const cssClasses = createComputed(() => {
+        const isAppRunning = isAppRunningBinding();
+        const justOpened = justOpenedState();
         const res = ["dock-item"];
         if (isAppRunning) {
             res.push("active");
@@ -39,20 +41,22 @@ export function DefaultButtonDockItem({
     });
 
     function doOpen() {
-        if (!justOpened.get() && launchOrFocus(item.app!, monitor)) {
-            setJustOpened(true);
-            setTimeout(() => setJustOpened(false), 2000);
+        if (!justOpenedState.peek() && launchOrFocus(item.app!, monitor)) {
+            setJustOpenedState(true);
+            setTimeout(() => setJustOpenedState(false), 2000);
         }
     }
 
     function doNewInstance() {
-        item.app!.launch();
-        setJustOpened(true);
-        setTimeout(() => setJustOpened(false), 2000);
+        launchInHomeDir(item.app!);
+        setJustOpenedState(true);
+        setTimeout(() => setJustOpenedState(false), 2000);
     }
 
     function doClose() {
-        findAppClient(item.app!)?.kill();
+        if (item.app) {
+            findAppClient(item.app)?.kill();
+        }
     }
 
     const actionGroup = new Gio.SimpleActionGroup();
@@ -63,19 +67,16 @@ export function DefaultButtonDockItem({
     ]);
 
     const rightClickPopoverMenu = (
-        <GlassyMenu
+        <contrapshellpopovermenu
             $={(self) => {
                 self.set_menu_model(appMenuModel);
                 self.insert_action_group("dock_item", actionGroup);
 
-                function updateEnabledActions() {
-                    const isRunning = isAppRunningBinding.get();
+                createEffect(() => {
+                    const isRunning = isAppRunningBinding();
                     (actionGroup.lookup_action("new_instance") as Gio.SimpleAction).set_enabled(isRunning);
                     (actionGroup.lookup_action("close") as Gio.SimpleAction).set_enabled(isRunning);
-                }
-
-                onCleanup(isAppRunningBinding.subscribe(updateEnabledActions));
-                updateEnabledActions();
+                });
             }}
         />
     ) as Gtk.Popover;
@@ -85,7 +86,7 @@ export function DefaultButtonDockItem({
             cssClasses={cssClasses}
             widthRequest={config.dock.itemSize}
             heightRequest={config.dock.itemSize}
-            tooltipText={item.tooltip ?? item.app?.name ?? ""}
+            tooltipText={item.tooltip ?? item.app?.get_name() ?? ""}
             valign={Gtk.Align.CENTER}
             cursor={CURSOR_POINTER}
             popover={rightClickPopoverMenu}
@@ -111,11 +112,7 @@ export function DefaultButtonDockItem({
                 }}
             />
             <Squircle>
-                <image
-                    pixelSize={config.dock.iconSize}
-                    iconName={item.iconName}
-                    cssClasses={["icon-image"]}
-                />
+                <image pixelSize={config.dock.iconSize} iconName={item.iconName} cssClasses={["icon-image"]} />
             </Squircle>
         </menubutton>
     );

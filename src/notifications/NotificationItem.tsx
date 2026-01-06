@@ -1,9 +1,9 @@
 import { Gtk } from "ags/gtk4";
 import AstalNotifd from "gi://AstalNotifd?version=0.1";
 import Pango from "gi://Pango?version=1.0";
-import { popdownParentMenuButton } from "../utils/gtk";
+import { popdownParentWindow } from "../utils/gtk";
 import { CURSOR_POINTER } from "../utils/gtk";
-import { guessNotificationApp } from "../notifications/notifications_state";
+import GioUnix from "gi://GioUnix?version=2.0";
 
 const TIME_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
     day: "2-digit",
@@ -14,12 +14,21 @@ const TIME_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
     second: "2-digit",
 };
 
-function formatNotificationDate(notification: AstalNotifd.Notification) {
-    return new Date(notification.time * 1000).toLocaleString("default", TIME_FORMAT_OPTIONS);
+function guessNotificationApp(notification: AstalNotifd.Notification) {
+    if (notification.desktopEntry) {
+        return GioUnix.DesktopAppInfo.new(`${notification.desktopEntry}.desktop`);
+    }
+
+    const entryName = GioUnix.DesktopAppInfo.search(notification.appName)[0]?.[0];
+    if (entryName) {
+        return GioUnix.DesktopAppInfo.new(entryName);
+    }
+
+    return undefined;
 }
 
-function getNotificationIconName(notification: AstalNotifd.Notification) {
-    return notification.appIcon || guessNotificationApp(notification)?.iconName || "notification-symbolic";
+function formatNotificationDate(notification: AstalNotifd.Notification) {
+    return new Date(notification.time * 1000).toLocaleString("default", TIME_FORMAT_OPTIONS);
 }
 
 export function NotificationItem({
@@ -32,10 +41,29 @@ export function NotificationItem({
     return (
         <box cssClasses={["notif-bar-item"]} orientation={Gtk.Orientation.HORIZONTAL} valign={Gtk.Align.START}>
             <image
-                iconName={getNotificationIconName(notification)}
                 valign={Gtk.Align.START}
                 marginTop={4}
-                pixelSize={26}
+                pixelSize={32}
+                $={(self) => {
+                    if (notification.image) {
+                        if (notification.image.startsWith("/")) {
+                            self.set_from_file(notification.image);
+                        } else {
+                            self.set_from_icon_name(notification.image);
+                        }
+                        return;
+                    }
+                    if (notification.appIcon) {
+                        self.set_from_icon_name(notification.appIcon);
+                        return;
+                    }
+                    const gicon = guessNotificationApp(notification)?.get_icon();
+                    if (gicon) {
+                        self.set_from_gicon(gicon);
+                        return;
+                    }
+                    self.set_from_icon_name("notification");
+                }}
             />
             <box cssClasses={["notif-bar-item-text"]} orientation={Gtk.Orientation.VERTICAL} vexpand={true}>
                 <box orientation={Gtk.Orientation.VERTICAL}>
@@ -67,7 +95,7 @@ export function NotificationItem({
                             const defaultAction = notification.actions.find((a) => a.id === "default");
                             if (defaultAction) {
                                 notification.invoke(defaultAction.id);
-                                popdownParentMenuButton(source.widget);
+                                popdownParentWindow(source.widget);
                             }
                         }}
                     />
@@ -89,7 +117,7 @@ export function NotificationItem({
                                     cursor={CURSOR_POINTER}
                                     onClicked={(self) => {
                                         notification.invoke(action.id);
-                                        popdownParentMenuButton(self);
+                                        popdownParentWindow(self);
                                     }}
                                 >
                                     {notification.actionIcons ? (

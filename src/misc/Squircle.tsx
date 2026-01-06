@@ -29,10 +29,6 @@ export function squirclePath(cr: giCairo.Context, { borderSmoothing, borderRadiu
         const cx = xm + s * ((y1 - y0) / d);
         const cy = ym - s * ((x1 - x0) / d);
 
-        // we could also try this center, but it doesn't seem necessary
-        // const cx1 = xm - s * ((y1 - y0) / d);
-        // const cx2 = ym + s * ((x1 - x0) / d);
-
         const startAngle = Math.atan2(y0 - cy, x0 - cx);
         const endAngle = Math.atan2(y1 - cy, x1 - cx);
 
@@ -156,45 +152,3 @@ export function Squircle({
         </box>
     );
 }
-
-// export function DangerSquircle({ children }: { children: JSX.Element }) {
-//     let animationTimer: Timer | undefined = undefined;
-//     let drawingArea: Gtk.DrawingArea | undefined = undefined;
-
-//     return (
-//         <box layoutManager={new Gtk.BinLayout()}>
-//             <Gtk.GestureSingle
-//                 button={1}
-//                 onBegin={(source) => {
-//                     source.set_state(Gtk.EventSequenceState.CLAIMED);
-//                 }}
-//             />
-//             <Gtk.EventControllerMotion
-//                 onEnter={() => {
-//                     animationTimer = frameInterval(() => drawingArea?.queue_draw());
-//                 }}
-//                 onLeave={() => {
-//                     animationTimer?.cancel();
-//                     animationTimer = undefined;
-//                 }}
-//             />
-//             <drawingarea
-//                 class="squircle-danger"
-//                 onMap={(self) => (drawingArea = self)}
-//                 onUnmap={() => (drawingArea = undefined)}
-//                 $={(self) => {
-//                     self.set_draw_func((_, cr, width, height) => {
-//                         drawDangerSquircle(cr, {
-//                             borderRadius: 12,
-//                             borderSmoothing: 1,
-//                             width,
-//                             height,
-//                         });
-//                         cr.$dispose();
-//                     });
-//                 }}
-//             />
-//             {children}
-//         </box>
-//     );
-// }

@@ -1,12 +1,10 @@
-import AstalApps from "gi://AstalApps?version=0.1";
+import GioUnix from "gi://GioUnix?version=2.0";
 
 export enum DockItemFeature {
-    BottlesLauncher,
-    SteamLauncher,
     GameLauncher,
     MpdClient,
 }
 
 export type DockItemQuery = { query?: string; iconName?: string; feature?: DockItemFeature; tooltip?: string };
 
-export type DockItem = { app?: AstalApps.Application; iconName: string; feature?: DockItemFeature; tooltip?: string };
+export type DockItem = { app?: GioUnix.DesktopAppInfo; iconName: string; feature?: DockItemFeature; tooltip?: string };

@@ -1,10 +1,13 @@
 import { Gdk, Gtk } from "ags/gtk4";
 import { For } from "gnim";
-import { fetchImage, NewsItem, newsItems, refreshNews } from "./news_state";
+import { NewsItem, newsState } from "./news_state";
 import { CURSOR_POINTER } from "../utils/gtk";
 import { execAsync } from "ags/process";
 import config from "../config";
 import Adw from "gi://Adw?version=1";
+import GLib from "gi://GLib?version=2.0";
+import GioUnix from "gi://GioUnix?version=2.0";
+import Gio from "gi://Gio?version=2.0";
 
 const TIME_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
     day: "2-digit",
@@ -27,7 +30,7 @@ function NewsItemPicture({ item }: { item: NewsItem }) {
             hexpand={true}
             heightRequest={350}
             $={(self) => {
-                fetchImage(item.picture)
+                newsState().fetchImage(item.picture)
                     .then((file) => {
                         const stack = self.get_first_child()! as Gtk.Stack;
                         const picture = stack.get_child_by_name("pic") as Gtk.Picture;
@@ -94,7 +97,7 @@ function NewsItem({ item }: { item: NewsItem }) {
                     cursor={CURSOR_POINTER}
                     valign={Gtk.Align.START}
                     marginStart={24}
-                    onClicked={() => execAsync(`${config.path.xdgOpen} ${item.link}`)}
+                    onClicked={() => Gio.AppInfo.launch_default_for_uri(item.link, null)}
                 />
             </box>
             {item.picture && <NewsItemPicture item={item} />}
@@ -112,12 +115,12 @@ function NewsItem({ item }: { item: NewsItem }) {
 
 export function News() {
     return (
-        <box cssClasses={["news"]} layoutManager={new Gtk.BinLayout()} hexpand={true} hexpandSet={true}>
+        <box cssClasses={["news"]} layoutManager={new Gtk.BinLayout()} hexpandSet={true}>
             <box orientation={Gtk.Orientation.VERTICAL} hexpand={true}>
                 <box orientation={Gtk.Orientation.HORIZONTAL} cssClasses={["popover-title"]} valign={Gtk.Align.START}>
                     <image iconName={"newspaper-symbolic"} halign={Gtk.Align.START} pixelSize={16} />
                     <label label="News" xalign={0} hexpand={true} />
-                    <button cursor={CURSOR_POINTER} valign={Gtk.Align.CENTER} onClicked={() => refreshNews()}>
+                    <button cursor={CURSOR_POINTER} valign={Gtk.Align.CENTER} onClicked={() => newsState().refreshNews()}>
                         <box spacing={12}>
                             <image iconName="view-refresh-symbolic" />
                             <label label="Refresh" />
@@ -128,7 +131,7 @@ export function News() {
                     child={
                         (
                             <box orientation={Gtk.Orientation.VERTICAL}>
-                                <For each={newsItems}>{(item) => <NewsItem item={item} />}</For>
+                                <For each={newsState().newsItems}>{(item) => <NewsItem item={item} />}</For>
                             </box>
                         ) as Gtk.Widget
                     }

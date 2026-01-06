@@ -4,24 +4,14 @@ import { Monitor } from "../utils/monitors";
 import { DockItem, DockItemFeature } from "./types";
 import MusicLibraryDockItem from "../mpd/MusicLibraryDockItem";
 import { DefaultButtonDockItem } from "../dock/DefaultButtonDockItem";
-import {
-    BottlesGameLauncherPopover,
-    GameLauncherDockItem,
-    SteamGameLauncherPopover,
-} from "../game_launcher/GameLauncherPopover";
-import { appNotificationCounts } from "./dock_state";
+import { dockState } from "./dock_state";
+import { GameLauncherDockItem } from "../game_launcher/GameLauncherPopover";
 
 function ButtonDockItemContent({ item, monitor }: { item: DockItem; monitor: Monitor }) {
     switch (item.feature) {
-        case DockItemFeature.BottlesLauncher:
-            const bottlesPopover = (<BottlesGameLauncherPopover item={item} monitor={monitor} />) as Gtk.Popover;
-            return <DefaultButtonDockItem item={item} monitor={monitor} leftClickPopover={bottlesPopover} />;
-        case DockItemFeature.SteamLauncher:
-            const steamPopover = (<SteamGameLauncherPopover item={item} monitor={monitor} />) as Gtk.Popover;
-            return <DefaultButtonDockItem item={item} monitor={monitor} leftClickPopover={steamPopover} />;
         case DockItemFeature.GameLauncher:
             return (
-                <GameLauncherDockItem iconName={item.iconName} tooltip={item.tooltip ?? "Games"} monitor={monitor} />
+                <GameLauncherDockItem iconName={item.iconName} tooltip={item.tooltip ?? "Games"} />
             );
         case DockItemFeature.MpdClient:
             return <MusicLibraryDockItem iconName={item.iconName} />;
@@ -31,9 +21,9 @@ function ButtonDockItemContent({ item, monitor }: { item: DockItem; monitor: Mon
 }
 
 export function ButtonDockItem({ item, monitor }: { item: DockItem; monitor: Monitor }) {
-    const entryWithoutSuffix = item.app?.entry.slice(0, -8);
+    const entryWithoutSuffix = item.app?.get_name().slice(0, -8);
     const notificationCount = entryWithoutSuffix
-        ? appNotificationCounts.as((an) => an.get(entryWithoutSuffix) ?? 0)
+        ? dockState().appNotificationCounts.as((an) => an.get(entryWithoutSuffix) ?? 0)
         : undefined;
 
     return (

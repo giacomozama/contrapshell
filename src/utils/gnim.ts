@@ -1,7 +1,7 @@
 import { createPoll } from "ags/time";
-import { createState, State } from "gnim";
-import { Storage } from "../storage/types";
+import { createEffect, createState, State } from "gnim";
 import { setStorage, storage } from "../storage/storage_state";
+import { Storage } from "../storage/types";
 
 export function createPollState(init: string, interval: number, exec: string | string[]): State<string>;
 
@@ -25,10 +25,10 @@ export function createPollState<T>(
         typeof execOrFn === "function"
             ? createPoll(init, interval, execOrFn)
             : createPoll(init, interval, execOrFn, transform ?? ((stdout) => stdout as T));
-    poll.subscribe(() => state[1](poll.get()));
+    createEffect(() => state[1](poll()));
     return state;
 }
 
-export function createStorageBackedState<T>(key: keyof Storage): State<T> {
-    return [storage.as((s) => s[key] as T), (v) => setStorage({ ...storage.get(), [key]: v } as Storage)];
+export function createStorageBackedState(key: keyof Storage): State<Storage[typeof key]> {
+    return [storage.as((s) => s[key]), (v) => setStorage({ ...storage.peek(), [key]: v } as Storage)];
 }

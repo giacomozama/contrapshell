@@ -2,11 +2,11 @@ import { CURSOR_POINTER, popupParentMenuButton } from "../utils/gtk";
 import { Gtk } from "ags/gtk4";
 import AstalHyprland from "gi://AstalHyprland?version=0.1";
 import { Squircle } from "../misc/Squircle";
-import { GlassyMenu } from "../misc/GlassyPopover";
+import { ContrapshellPopoverMenu } from "../misc/GlassyPopover";
 import { isTrashFull, trashActionGroup, trashMenu } from "./trash_state";
 import config from "../config";
 
-export default function TrashDockItem() {
+export default function Trash() {
     let isHovered = false;
     return (
         <menubutton
@@ -41,7 +41,7 @@ export default function TrashDockItem() {
                     />
                 </Squircle>
             </box>
-            <GlassyMenu
+            <ContrapshellPopoverMenu
                 $={(self) => {
                     self.set_menu_model(trashMenu);
                     self.insert_action_group("trash", trashActionGroup);

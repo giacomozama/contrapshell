@@ -21,33 +21,20 @@ export function walkChildren(widget: Gtk.Widget, callback: (widget: Gtk.Widget) 
     }
 }
 
-export function clearChildren(widget: Gtk.Box) {
-    let child;
-    while (child = widget.get_first_child()) {
-        widget.remove(child)
-    }
-}
-
 export function findParent(widget: Gtk.Widget, predicate: (widget: Gtk.Widget) => boolean): Gtk.Widget | null {
     if (predicate(widget)) return widget;
     const parent = widget.get_parent();
     return parent ? findParent(parent, predicate) : null;
 }
 
-export function popdownParentMenuButton(widget: Gtk.Widget) {
-    const menuButton = findParent(widget, (w) => w instanceof Gtk.MenuButton) as Gtk.MenuButton;
-    menuButton.popdown();
+export function popdownParentWindow(widget: Gtk.Widget) {
+    const window = findParent(widget, (w) => w instanceof Gtk.Window) as Gtk.Window;
+    window.hide();
 }
 
 export function popupParentMenuButton(widget: Gtk.Widget) {
     const menuButton = findParent(widget, (w) => w instanceof Gtk.MenuButton) as Gtk.MenuButton;
     menuButton.popup();
-}
-
-export function removePopoverFromParentMenuButton(widget: Gtk.Widget) {
-    const parent = findParent(widget, (w) => w instanceof Gtk.MenuButton) as Gtk.MenuButton;
-    parent.set_popover(null);
-    parent.set_sensitive(true);
 }
 
 export function add_throttled_tick_callback<T extends Gtk.Widget>(
@@ -59,22 +46,6 @@ export function add_throttled_tick_callback<T extends Gtk.Widget>(
     return widget.add_tick_callback((w, clock) => {
         const frameTime = clock.get_frame_time();
         if (frameTime - lastFrameTime > minInterval) {
-            lastFrameTime = frameTime;
-            return callback(w as T, clock);
-        }
-        return true;
-    });
-}
-
-export function add_throttled_tick_callback_dynamic<T extends Gtk.Widget>(
-    widget: T,
-    minIntervalGetter: () => number,
-    callback: (widget: T, clock: Gdk.FrameClock) => boolean
-) {
-    let lastFrameTime = 0;
-    return widget.add_tick_callback((w, clock) => {
-        const frameTime = clock.get_frame_time();
-        if (frameTime - lastFrameTime > minIntervalGetter()) {
             lastFrameTime = frameTime;
             return callback(w as T, clock);
         }

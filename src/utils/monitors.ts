@@ -22,6 +22,8 @@ export const firstNonFullscreenMonitor = createComputed(() => {
     let result: Gdk.Monitor | undefined;
 
     for (const monitor of gdkMonitors) {
+        if (!monitor.connector) continue;
+
         const hyprMonitor = AstalHyprland.get_default().get_monitor_by_name(monitor.connector);
         if (!hyprMonitor) continue;
 
@@ -49,7 +51,7 @@ export function rememberForEachMonitor(factory: (monitor: Monitor) => GObject.Ob
         const gdkMonitors = gdkMonitorsBinding();
 
         for (const gdkMonitor of gdkMonitors) {
-            if (existing[gdkMonitor.connector]) continue;
+            if (!gdkMonitor.connector || existing[gdkMonitor.connector]) continue;
 
             existing[gdkMonitor.connector] = factory({
                 connector: gdkMonitor.connector,

@@ -26,7 +26,11 @@
     }
 
     .weather-data {
-        font-size: 16px;
+        font-size: 18px;
+
+        image {
+            -gtk-icon-size: 22px;
+        }
     }
 }
 
@@ -35,31 +39,15 @@
     @include common.glassy-background;
     box-shadow: none;
 
-    .current-weather {
-        font-family: Bebas Neue;
-        border-right: 1px solid rgba(255, 255, 255, 0.1);
+    .current-indicator {
+        color: rgb(common.$accent-2-rgb);
+        -gtk-icon-size: 24px;
+        margin-left: -4px;
+    }
 
-        .temp {
-            font-size: 60px;
-
-            image {
-                margin-top: -6px;
-                margin-right: 12px;
-            }
-        }
-
-        .rain-and-humidity {
-            margin: -12px 0 -4px 0;
-        }
-
-        .rain,
-        .humidity,
-        .wind-speed {
-            font-size: 40px;
-        }
-
-        .wind {
-            padding-right: 12px;
+    .hourly-weather-item {
+        &.current {
+            background-color: rgba(common.$accent-2-rgb, 0.25);
         }
     }
 
@@ -78,7 +66,7 @@
 
     .hourly-list {
         .hourly-weather-item {
-            padding: 12px 24px;
+            padding: 12px 24px 12px 0;
             font-size: 20px;
         }
     }

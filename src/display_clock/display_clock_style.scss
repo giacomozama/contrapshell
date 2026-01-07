@@ -1,69 +1,29 @@
 @use "../common.scss";
 
-.display-clock-calendar {
+.display-clock-calendar-container {
     @include common.glassy-background;
     border-radius: common.$background-panel-border-radius;
-}
 
-.display-clock {
-    font-family: Bebas Neue;
-    font-weight: 600;
-    font-size: 200px;
-    padding: 0 4px 0 0;
+    .display-clock-calendar {
+        color: rgba(255, 255, 255, 0.6);
+        font-family: "Ode to Idle Gaming";
+        margin-top: -20px;
 
-    .hour,
-    .minute {
-        label {
-            min-width: 148px;
-            background: rgba(40, 40, 40, 0.9);
-            border-radius: common.$background-panel-border-radius;
-            line-height: 0.7;
-            padding-top: 18px;
-            box-shadow: inset 0 0 1px 3px rgba(255, 255, 255, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.2), 0 0 4px 0 rgba(0, 0, 0, 0.2);
+        .clock-time {
+            font-size: 154px;
+
+            .clock-time-hours {
+                color: common.$accent-2;
+            }
         }
-    }
 
-    .hour {
-        margin: 18px 0 0 18px;
-    }
+        .clock-date {
+            font-size: 60px;
+            margin-top: -56px; // Pull it up slightly closer to the time if needed, or adjust
 
-    .minute {
-        margin: 0 0 18px 18px;
-    }
-}
-
-.display-calendar {
-    font-family: Bebas Neue;
-    font-weight: 600;
-    padding: 0 0 0 4px;
-
-    .month {
-        margin: 18px 18px 0 0;
-        padding-top: 18px;
-        border-radius: common.$background-panel-border-radius;
-        line-height: 0.85;
-        background: radial-gradient(
-            circle at bottom center,
-            rgba(common.$accent-1-rgb, 0.8) 10%,
-            rgba(255, 255, 255, 0.1)
-        );
-        font-size: 150px;
-        box-shadow: inset 0 0 1px 3px rgba(255, 255, 255, 0.04), inset 0 0 0 1px rgba(255, 255, 255, 0.11),
-            0 0 4px 0 rgba(0, 0, 0, 0.2);
-    }
-
-    .day {
-        margin: 0 18px 18px 0;
-        border-radius: common.$background-panel-border-radius;
-        padding-top: 28px;
-        background: radial-gradient(
-            circle at top center,
-            rgba(common.$accent-1-rgb, 0.8) 10%,
-            rgba(255, 255, 255, 0.1)
-        );
-        font-size: 240px;
-        line-height: 0.75;
-        box-shadow: inset 0 0 1px 3px rgba(255, 255, 255, 0.04), inset 0 0 0 1px rgba(255, 255, 255, 0.11),
-            0 0 4px 0 rgba(0, 0, 0, 0.2);
+            .clock-date-month {
+                color: common.$accent-2; // Placeholder color, adjust as needed
+            }
+        }
     }
 }

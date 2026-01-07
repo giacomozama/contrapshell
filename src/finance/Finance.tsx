@@ -488,16 +488,39 @@ function StockList({ name, selector }: { name: string; selector: (item: TopStock
                                                 marginBottom={4}
                                             />
                                         </box>
-                                        <label
-                                            cssClasses={["change", item.change_amount < 0 ? "negative" : "positive"]}
-                                            label={`${item.change_amount > 0 ? "+" : ""}${
-                                                item.change_amount
-                                            } <span color="#ffffff80">•</span> ${
-                                                item.change_amount > 0 ? "+" : ""
-                                            }${item.change_percent.toFixed(2)}%`}
+                                        <box
+                                            cssClasses={["change"]}
                                             valign={Gtk.Align.CENTER}
-                                            useMarkup={true}
-                                        />
+                                            spacing={20}
+                                        >
+                                            <box orientation={Gtk.Orientation.VERTICAL} halign={Gtk.Align.END}>
+                                                <box spacing={4}>
+                                                    <label
+                                                        label={`${item.change_amount >= 0 ? "+" : "-"}${Math.abs(
+                                                            item.change_amount
+                                                        ).toFixed(2)}`}
+                                                        xalign={1}
+                                                        hexpand={true}
+                                                    />
+                                                    <label label="$" widthRequest={20} xalign={0.5} />
+                                                </box>
+                                                <box spacing={4}>
+                                                    <label
+                                                        label={`${item.change_amount >= 0 ? "+" : "-"}${Math.abs(
+                                                            item.change_percent
+                                                        ).toFixed(2)}`}
+                                                        xalign={1}
+                                                        hexpand={true}
+                                                    />
+                                                    <label label="%" widthRequest={20} xalign={0.5} />
+                                                </box>
+                                            </box>
+                                            <image
+                                                cssClasses={[item.change_amount < 0 ? "negative" : "positive"]}
+                                                iconName="profit-symbolic"
+                                                pixelSize={32}
+                                            />
+                                        </box>
                                     </box>
                                 </togglebutton>
                             )}

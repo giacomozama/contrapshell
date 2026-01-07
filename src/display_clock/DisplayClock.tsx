@@ -4,45 +4,49 @@ import Graphene from "gi://Graphene?version=1.0";
 import { Accessor } from "gnim";
 import GObject from "gnim/gobject";
 
-const FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
-    day: "2-digit",
-    month: "short",
+const TIME_OPTIONS: Intl.DateTimeFormatOptions = {
     hour: "2-digit",
-    hourCycle: "h23",
     minute: "2-digit",
+    hourCycle: "h23",
 };
 
-function getDateString() {
-    const date = new Date().toLocaleString("en-US", FORMAT_OPTIONS);
-    const parts = date.replace(",", "").split(" ");
-    return [parts[0], parts[1], ...parts[2].split(":")];
+function getTime() {
+    const timeString = new Date().toLocaleTimeString("en-US", TIME_OPTIONS);
+    const [hours, minutes] = timeString.split(":");
+    return { hours, minutes };
 }
 
-const currentDateString = createPoll(getDateString(), 1000, getDateString);
+function getDate() {
+    const now = new Date();
+    return {
+        weekday: now.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase(),
+        month: now.toLocaleDateString("en-US", { month: "short" }).toUpperCase(),
+        day: now.toLocaleDateString("en-US", { day: "numeric" }),
+    };
+}
+
+const currentTime = createPoll(getTime(), 1000, getTime);
+const currentDate = createPoll(getDate(), 1000, getDate);
 
 export function DisplayClock() {
     return (
-        <box hexpand={true} vexpandSet={true} class="display-clock-calendar">
+        <box hexpand={true} vexpand={true} class="display-clock-calendar-container">
             <box
-                class="display-clock"
+                class="display-clock-calendar"
                 orientation={Gtk.Orientation.VERTICAL}
-                overflow={Gtk.Overflow.HIDDEN}
-                halign={Gtk.Align.START}
-                spacing={8}
-                vexpand={true}
+                hexpand={true}
+                valign={Gtk.Align.CENTER}
+                halign={Gtk.Align.CENTER}
             >
-                <box class="hour" spacing={8} vexpand={true}>
-                    <label label={currentDateString.as((t) => t[2].charAt(0))} />
-                    <label label={currentDateString.as((t) => t[2].charAt(1))} />
+                <box class="clock-time" halign={Gtk.Align.CENTER}>
+                    <label class="clock-time-hours" label={currentTime.as((t) => t.hours)} />
+                    <label label={currentTime.as((t) => t.minutes)} />
                 </box>
-                <box class="minute" spacing={8} vexpand={true}>
-                    <label label={currentDateString.as((t) => t[3].charAt(0))} />
-                    <label label={currentDateString.as((t) => t[3].charAt(1))} />
+                <box class="clock-date" halign={Gtk.Align.CENTER} spacing={12}>
+                    <label class="clock-date-weekday" label={currentDate.as((d) => d.weekday)} />
+                    <label class="clock-date-month" label={currentDate.as((d) => d.month)} />
+                    <label class="clock-date-day" label={currentDate.as((d) => d.day)} />
                 </box>
-            </box>
-            <box class="display-calendar" orientation={Gtk.Orientation.VERTICAL} spacing={8} hexpand={true}>
-                <label class="month" hexpand={true} label={currentDateString.as((t) => t[0])} />
-                <label class="day" hexpand={true} label={currentDateString.as((t) => t[1])} vexpand={true} />
             </box>
         </box>
     );
